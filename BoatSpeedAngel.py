@@ -11,15 +11,14 @@ from math import acos,degrees
 import matplotlib.pyplot as plt
 from math import asin,degrees,sqrt,tanh,sinh
 
-#输入船只两侧散波在DAS图上的斜率，单位为m/s，是相速度，不是群速度
-ship=1
+#输入船只两侧散波在DAS图上的斜率，单位为m/s。
+ship=1    #选择不同的船只
 #Ais数据
 V=[12.83,13.86,13.82,7.078,13.11]
 Angle=[123.26,119.86,58.22,90.707,120.08]
 print(V[ship],Angle[ship])
 
-
-L1=np.array([6,6,8,14,4])  #Km
+L1=np.array([6,6,8,14,4])  #实验部分船只的数据Km
 t1=np.array([11,11.4,4.6,24.5,8.25])
 K1=L1*1000/(t1*60)
 
@@ -37,8 +36,6 @@ def f1(fai,alpha,k1,k2):
     err=k1*sin(radians(fai-alpha))-k2*sin(radians(180-fai-alpha))
     return err
 
-
-
 res=pd.DataFrame(columns=['fai','alpha','err1','speed'])
 
 for fai in tqdm(np.arange(1,180,1)):
@@ -54,7 +51,7 @@ for fai in tqdm(np.arange(1,180,1)):
 
 g=9.8
 
-#%%
+#%%按照水深H与船速来筛选可能的航速和航向
 
 res['Height']=res['speed']**2/g
 res1=res[(abs(res['err1'])<0.02) & (res['Height']>=7)]
@@ -65,20 +62,9 @@ res1['Fr']=res1['ShipSpeed']/res1['speed']
 #res1['BoatSpeed']=res1['speed']/np.sin(np.radians(np.array(res1['beta'])))
 
 #%%
-res1.to_excel('船只轨迹计算结果'+str(U[ship])+'-'+str(Angle[ship])+'.xlsx')
+res1.to_excel('船只轨迹计算结果'+str(V[ship])+'-'+str(Angle[ship])+'.xlsx')
 
-#%%分析船只的佛汝德系数范围
-print(
-FroudeNum(6,7),
-FroudeNum(6,14),
-FroudeNum(12,7),
-FroudeNum(12,10))
 
-#%%佛汝德系数对alpha角度的影响
-Fr=FroudeNum(12,10)
-print(degrees(asin(1/Fr)))
-Fr=FroudeNum(12,7)
-print(degrees(asin(1/Fr)))
 #%%画出 curve of Fr and alpha
 
 H=7
@@ -102,43 +88,6 @@ plt.figure(dpi=300)
 plt.plot(FR,ALPHA)
 plt.xlabel('Fr')
 plt.ylabel(chr(945))
-
-# %%
-degrees(asin(1/3))
-# %%
-
-# %%假设单边波峰线平行于光纤
-L1=6  #Km
-t1=11 #Min  #25.5,26.5,11.5,25.6
-k1=L1*1000/(t1*60)
-Thai=123
-V=12.82#13.856#12.83
-H=7.4
-g=9.8
-fr=FroudeNum(V,H)
-alpha1=180-Thai-degrees(asin(sqrt(g*H)/k1))
-alpha1=Thai-degrees(asin(sqrt(g*H)/k1))
-alpha2=degrees(asin(1/sqrt(fr)))
-
-print(alpha1,alpha2)
-#%%
-V=10
-H=np.arange(6,8,0.01)
-FR=[]
-Alpha=[]
-for h in H:
-    fr=FroudeNum(V,h)
-    FR.append(fr)
-    alpha2=degrees(asin(1/sqrt(fr)))
-    Alpha.append(alpha2)
-plt.figure()
-plt.plot(FR,Alpha)
-plt.xlabel('Fr')
-plt.ylabel('Degree')
-# %%
-V=13
-h=7
-fr=FroudeNum(V,h)
 
 
 

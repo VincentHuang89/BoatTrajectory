@@ -49,6 +49,7 @@ os.chdir(path)
 print('当前工作路径是：' + os.getcwd())  # 显示当前路径
 
 
+
 #选择数据路径
 '''
 对应的船只MMSI和轨迹时间段（UTC+8）分别为
