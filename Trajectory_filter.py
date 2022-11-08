@@ -161,17 +161,22 @@ TimeWin = slice(Tstart*60*DownSampleRate, Tend*60*DownSampleRate, 1)
 Cstart = 0
 Cend= -1
 Cwin = slice(Cstart,Cend,1)
-MinValue=200
+
 ShowData=(FILTER_Data[TimeWin,Cwin])
-ShowData=np.maximum(ShowData,MinValue)
 
+MinValue=200
+#ShowData=np.maximum(ShowData,MinValue)
 
+#归一化
+from sklearn import preprocessing
+ShowData = preprocessing.scale(ShowData)
 
 
 fig1=plt.figure(dpi=400,figsize=(13,10))    
 ax1 = fig1.add_subplot(1,1,1)
 #plt.imshow((np.abs(np.transpose(ShowData))), cmap="seismic", aspect='auto',origin='lower',vmin= 0,vmax=600) # cmap='seismic',, 
-plt.imshow(((np.transpose(ShowData))), cmap="seismic", aspect='auto',origin='lower',vmin= MinValue,vmax=700) # cmap='seismic',, 
+#plt.imshow(((np.transpose(ShowData))), cmap="bwr", aspect='auto',origin='lower',vmin= MinValue,vmax=700) # cmap='seismic',, 
+plt.imshow(((np.transpose(ShowData))), cmap="bwr", aspect='auto',origin='lower',vmin=-3,vmax=3) # cmap='seismic',, 
 
 #计算坐标轴的刻度大小,合计10个时间戳(计算有问题，需要考虑数据的实际距离以及截断)
 TimeTicks=10
