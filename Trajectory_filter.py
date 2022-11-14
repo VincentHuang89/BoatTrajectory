@@ -23,8 +23,8 @@ from numpy import array, sign, zeros
 from scipy.interpolate import interp1d
 import scipy.signal
 import math
-from math import sin,cos
-#mpl.use('tKAgg')
+from math import sin,cos,tan,radians
+from sklearn import preprocessing
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 from scipy.fftpack import fft,ifft
@@ -36,6 +36,9 @@ from DASFileRead import DasFileRead
 from tdms_reader_1 import *
 from AISData import AISData,AnchorShip
 from DASFilter import bandpass_f,WeightMatrix
+
+import skimage 
+from skimage.transform import radon
 #%%
 start = time.time()
 
@@ -61,8 +64,8 @@ print('当前工作路径是：' + os.getcwd())  # 显示当前路径
 tdms文件的时间是以UTC+0来命名，两者存在区别
 '''
 DataPath='/home/huangwj/DAS/BoatTrajectory/DataforAIS'
-ST_UTC8=datetime.datetime.strptime("24/07/22 21:05", "%d/%m/%y %H:%M")
-ET_UTC8=datetime.datetime.strptime("24/07/22 21:16", "%d/%m/%y %H:%M")
+ST_UTC8=datetime.datetime.strptime("24/07/22 21:15", "%d/%m/%y %H:%M")
+ET_UTC8=datetime.datetime.strptime("24/07/22 21:30", "%d/%m/%y %H:%M")
 ST_UTC0=ST_UTC8-timedelta(hours=8)
 ET_UTC0=ET_UTC8-timedelta(hours=8)
 FileSet,times=DasFileRead(ST_UTC0,ET_UTC0,DataPath)
@@ -168,10 +171,9 @@ MinValue=200
 #ShowData=np.maximum(ShowData,MinValue)
 
 #归一化
-from sklearn import preprocessing
 ShowData = preprocessing.scale(ShowData)
 
-
+#%%
 fig1=plt.figure(dpi=400,figsize=(13,10))    
 ax1 = fig1.add_subplot(1,1,1)
 #plt.imshow((np.abs(np.transpose(ShowData))), cmap="seismic", aspect='auto',origin='lower',vmin= 0,vmax=600) # cmap='seismic',, 
@@ -195,15 +197,76 @@ if PLOTANCHOR==1:
         plt.plot([deltaCTdown[i],deltaCTUpper[i],deltaCTUpper[i],deltaCTdown[i],deltaCTdown[i]],[RegionDistdown[i],RegionDistdown[i],RegionDistUpper[i],RegionDistUpper[i],RegionDistdown[i]],linewidth=1)
 
 #plt.vlines(vline_indx, 0, 4000, colors='g', linestyles='dashed', label='垂直线')
+
+#数据切片
+
+
+Tstart = 5.5  #minute
+Tend =7.5   #minute
+TimeWin = slice(int(Tstart*60*DownSampleRate), int(Tend*60*DownSampleRate), 1)
+Cstart = 1500
+Cend= 2200
+Cwin = slice(Cstart,Cend,1)
+ShowDataSlice=(ShowData[TimeWin,Cwin])
+RegionSliceX=[Tstart*60*DownSampleRate,Tend*60*DownSampleRate,Tend*60*DownSampleRate,Tstart*60*DownSampleRate,Tstart*60*DownSampleRate]
+RegionSliceY=[Cstart,Cstart,Cend,Cend,Cstart]
+plt.plot(RegionSliceX,RegionSliceY,linewidth=1)
+
 plt.savefig("Space-time diagram.png",bbox_inches = 'tight')
 print("Space-time diagram.png")
 
-
-
+ShowDataSlice=np.transpose((ShowDataSlice))
 # %%
+#Radon transformation标定斜率
+fig, (ax1, ax2) = plt.subplots(1, 2)
+
+ax1.set_title("Original")
+ax1.imshow(ShowDataSlice, aspect='auto',cmap="bwr",origin='lower',vmin=-3,vmax=3)
+theta = np.linspace(0., 180., max(ShowDataSlice.shape), endpoint=False)
+sinogram = radon(ShowDataSlice, theta=theta)
+dx, dy = 0.5 * 180.0 / max(ShowDataSlice.shape), 0.5 / sinogram.shape[0]
+ax2.set_title("Radon transform\n(Sinogram)")
+ax2.set_xlabel("Projection angle (deg)")
+ax2.set_ylabel("Projection position (pixels)")
+ax2.imshow(sinogram, cmap="bwr",
+           extent=(-dx, 180.0 + dx, -dy, sinogram.shape[0] + dy),
+           aspect='auto',origin='lower')
+plt.savefig('Radon_transform.png')
+
+
+#求解最大的斜率
+deg_y=np.argmax(sinogram)%sinogram.shape[1]/max(ShowDataSlice.shape)*180
+pos_x=int(np.argmax(sinogram)/sinogram.shape[1])
+print(pos_x,deg_y)
+
+
+#将斜率换算成速度m/s
+speed=1/tan(radians(deg_y))*channel_spacing*fs
+#speed1=tan(radians(90-deg_y))*channel_spacing*fs
+print(speed)
+
+
+#%%求解最大的斜率，平均每行的最大值索引
+deg_y_list=[]
+sino=[]
+for i in range(0,sinogram.shape[0]):
+    sino.append(np.max(sinogram[i,:]))
+    deg_y_list.append(np.argmax(sinogram[i,:])%sinogram.shape[1]/max(ShowDataSlice.shape)*180)
+
+df=pd.DataFrame(np.transpose(np.array([sino,deg_y_list])),columns=['sino','deg'])
+df.sort_values(by='sino',ascending=False,inplace=True)
+deg_y_list=df['deg'][0:10]
+print(np.mean(deg_y_list),np.median(deg_y_list))
+s1=1/tan(radians(np.mean(deg_y_list)))*channel_spacing*fs
+s2=1/tan(radians(np.median(deg_y_list)))*channel_spacing*fs
+
+print(s1,s2)
+
+
+#%%
 '''
 
-#%%1）速度滤波
+#1）速度滤波
 L=2  #Km
 t=4   #Min  #25.5,26.5,11.5,25.6
 KernelSize=600
