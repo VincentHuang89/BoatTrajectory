@@ -34,23 +34,38 @@ from datetime import timedelta
 from DASFileRead import DasFileRead
 from tdms_reader_1 import *
 from AISData import AISData,AnchorShip
-from DASFilter import bandpass_f,WeightMatrix
-
+from DASFilter import bandpass_f,WeightMatrix,PlotDAS
 import skimage 
 from skimage.transform import radon
 from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon
-#%%
-start = time.time()
 
+#%%Params ---------------------------------------
+# filter or not
+FILTER=1
+DownSampleRate = 100    #输入的采样数据为1秒1000个点，这里设置每秒采样的点数
+# Showdata params
+MINTIME=0
+MAXTIME=-1
+MINCHANNEL=0
+MAXCHANNEL=1500
+# Z-score and threshold filter
+threshold=2.5
+#radon transfromation params
+Tstart =2 #2.5  #minute
+Tend =3  #5.5   #minute
+Cstart = 2.5 #1800  #Km
+Cend= 3.6 #2500    #Km
+
+#---------------------------------------------------
+
+start = time.time()
 mpl.rcParams['font.sans-serif'] = ['SimHei']  # 显示中文
 mpl.rcParams['axes.unicode_minus'] = False  # 显示负号
 # from func import *
-
 # 设定工作路径
 path = '/home/huangwj/DAS/BoatTrajectory/'
 os.chdir(path)
 print('当前工作路径是：' + os.getcwd())  # 显示当前路径
-
 
 
 #选择数据路径
@@ -103,177 +118,51 @@ for i in range(0,len(FileSet)):
         Data = np.concatenate((Data, some_data1), axis=0)
     print(FilePath)
 
-
-#%%    
-
-#%%滤波
-
-FILTER=1
-if FILTER==1:
-    FILTER_Data = bandpass_f(Data, fs, 0,0.5,4) 
-else:
-    FILTER_Data=Data
-
-
-
 #%%
-#下采样（台站的采样率一般是100HZ以下）-----------------------------------------------------------------------------------------------------------------------------
-
-DataCoordX, DataCoordy = FILTER_Data.shape
-print('DataCoordX',DataCoordX,'DataCoordy',DataCoordy)
-# 数据切片
-t_start = 0
-t_end = -1
-t_interval = 1
-TWindow = slice(t_start, t_end, t_interval)
-c_start = 0
-c_end = -1
-c_interval = 1
-CWindow = slice(c_start, c_end, c_interval)
-
-DataSlice = FILTER_Data[TWindow, CWindow]
-
-# 对some_data 进行采样，因为原始数据每秒采样1000，可以降为200个点以方便人为的判断
-DownSampleRate = 10#输入的采样数据为1秒1000个点，这里设置每秒采样的点数
-FreqDownSample = DownSampleRate  #下采样频率
-TDownSample = slice(0, DataCoordX, int(1000 / DownSampleRate))
-DataDownSample = DataSlice[TDownSample, :]
-print('DataDownSample',np.shape(DataDownSample))
-
-#降采样后再滤波，节省计算量
-fs=DownSampleRate
-#FILTER_Data = bandpass_f(DataDownSample, fs,10,50,4) 
-#高斯滤波
-print('Filter!')
-MINCHANNEL=0
-MAXCHANNEL=-1
-FILTER_Data=DataDownSample[:,slice(MINCHANNEL,MAXCHANNEL,1)]
-
-#%%
-
 #读取时间区间的船只数据
 PosFile='pos_zf_gsd_1657814400_1660579199_742.csv'
 StaticFile='static_zf_gsd_1657814400_1660579199_742.csv'
 FiberBoatMessage=AISData(PosFile,StaticFile,ST,ET)
 
-#%%画出振动时空图
+#%%滤波
 
-Tstart = 0  #minute
-Tend = -1   #minute
-TimeWin = slice(int(Tstart*60*DownSampleRate), -1, 1)
-Cstart = 0
-Cend= -1
-Cwin = slice(Cstart,Cend,1)
+if FILTER==1:
+    FILTER_Data = bandpass_f(Data, fs, 0,0.5,4) 
+    print('Filter!')
+else:
+    FILTER_Data=Data
 
-ShowData=(FILTER_Data[TimeWin,Cwin])
+#%%
+#降采样
+DataCoordX, DataCoordy = FILTER_Data.shape
+print('DataCoordX',DataCoordX,'DataCoordy',DataCoordy)
+# 对some_data 进行采样，因为原始数据每秒采样1000，可以降为200个点以方便人为的判断
+TDownSample = slice(0, DataCoordX, int(1000 / DownSampleRate))
+DataDownSample = FILTER_Data[TDownSample, :]
 
 
+#画图展示的数据
+
+TimeWin = slice(int(MINTIME*60*DownSampleRate), max(-1,int(MAXTIME*60*DownSampleRate)), 1)
+ShowData=DataDownSample[TimeWin,slice(MINCHANNEL,MAXCHANNEL,1)]
 
 #Z-score and threshold filtering
 ShowData=(ShowData-np.mean(ShowData))/np.std(ShowData,ddof=1)
-STD=3*np.std(ShowData,ddof=1)
+STD=threshold*np.std(ShowData,ddof=1)
 ShowData=((ShowData>STD)|(ShowData<-STD))*ShowData
-'''
-X,Y=ShowData.shape
-ShowData=preprocessing.scale(ShowData.reshape(1,-1))
-ShowData=ShowData.reshape(X,Y)
-'''
-#%%
-fig1=plt.figure(dpi=400,figsize=(13,10))    
-ax1 = fig1.add_subplot(1,1,1) 
-plt.imshow(np.transpose(ShowData), cmap="bwr", aspect='auto',origin='lower',vmin=-3,vmax=3) # cmap=''bwr,, 
 
-#计算坐标轴的刻度大小,合计10个时间戳(计算有问题，需要考虑数据的实际距离以及截断)
-TimeTicks=10
-TI=(ET-ST)/TimeTicks
-xlabel=np.linspace(0,ShowData.shape[0],TimeTicks+1)
-plt.xticks(xlabel,pd.date_range(ST.strftime("%Y%m%d %H%M"),ET.strftime("%Y%m%d %H%M"),freq=TI),rotation = 60)
-ylabel=np.arange(0,ShowData.shape[1],500)
-plt.yticks(ylabel,np.round(ylabel*channel_spacing/1000))
+#Prepare data for radon transformation
 
-#船只过光纤轨迹标定
-PLOTANCHOR=0
-if PLOTANCHOR==1:
-    deltaCTUpper,deltaCTdown,RegionDistUpper,RegionDistdown=AnchorShip(FiberBoatMessage,MINCHANNEL,n_channels,channel_spacing,ST,ET,ShowData.shape[0])
-    for i in range(0,len(deltaCTdown)):
-        plt.plot([deltaCTdown[i],deltaCTUpper[i],deltaCTUpper[i],deltaCTdown[i],deltaCTdown[i]],[RegionDistdown[i],RegionDistdown[i],RegionDistUpper[i],RegionDistUpper[i],RegionDistdown[i]],linewidth=1)
-
-#plt.vlines(vline_indx, 0, 4000, colors='g', linestyles='dashed', label='垂直线')
-
-#数据切片
-
-
-Tstart =2 #2.5  #minute
-Tend =3#5.5   #minute
-Cstart = 600 #1800
-Cend= 950 #2500
 RegionSliceX=[Tstart*60*DownSampleRate,Tend*60*DownSampleRate,Tend*60*DownSampleRate,Tstart*60*DownSampleRate,Tstart*60*DownSampleRate]
-RegionSliceY=[Cstart,Cstart,Cend,Cend,Cstart]
-plt.plot(RegionSliceX,RegionSliceY,linewidth=1)
-plt.savefig("Space-time diagram.png",bbox_inches = 'tight')
-print("Space-time diagram.png")
-
+RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),int(Cend*1000/channel_spacing),int(Cend*1000/channel_spacing),int(Cstart*1000/channel_spacing)]
 TimeWin = slice(int(Tstart*60*DownSampleRate), int(Tend*60*DownSampleRate), 1)
-Cwin = slice(Cstart,Cend,1)
+Cwin = slice(int(Cstart*1000/channel_spacing),int(Cend*1000/channel_spacing),1)
 ShowDataSlice=(ShowData[TimeWin,Cwin])
 ShowDataSlice=np.transpose((ShowDataSlice))
-# %%Radon transformation and analysis
+#%%
+PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels)
+# Radon transformation and analysis
 sinogram=PlotRadon(ShowDataSlice)
-
 SNROnRadon(sinogram)
-SpeedOnRadon(sinogram,max(ShowDataSlice.shape),channel_spacing,fs)
+SpeedOnRadon(sinogram,max(ShowDataSlice.shape),channel_spacing,DownSampleRate)
 #%%
-'''
-
-#1）速度滤波
-L=2  #Km
-t=4   #Min  #25.5,26.5,11.5,25.6
-KernelSize=600
-Speed=L*1000/(t*60)
-K=Speed/(channel_spacing*DownSampleRate)
-weight_matrix,Cdim,Tdim=WeightMatrix(K,KernelSize)
-plt.figure()
-plt.imshow(weight_matrix)
-plt.plot(Tdim,Cdim)
-#%%
-
-Padding=int(KernelSize/2)
-MaxTime=FILTER_Data.shape[0]
-DataFilteredInSpeed=[]
-for t0 in range(0,MaxTime-KernelSize):
-    Tstart = t0  
-    Tend = t0+KernelSize   
-    TimeWin = slice(Tstart, Tend, 1)
-    Cstart = 0
-    Cend= -1
-    Cwin = slice(Cstart,Cend,1)
-    Data=((FILTER_Data[TimeWin,Cwin]))
-    MaxChannel=Data.shape[1]
-
-
-    DataFilteredInChannel=[]
-    for c in range(0,MaxChannel-KernelSize):
-        #利用channel维度，截取Kernel所对应的Ifmap数据
-        Cstart = c
-        Cend= c+KernelSize
-        Cwin = slice(Cstart,Cend,1)
-        DataKernel=Data[:,Cwin]
-        #plt.figure()
-        #plt.imshow(np.transpose(DataKernel), cmap="seismic",   aspect='auto',    origin='lower',vmin= 0,vmax=600)
-        temp=0
-        for t in Tdim:
-            temp=temp+DataKernel[t][Cdim[t]]
-        DataFilteredInChannel.append(temp/len(Tdim))
-    DataFilteredInSpeed.append(DataFilteredInChannel)
-    if t0%100==0:
-        print('Filter has been executed '+str(t0)+' times/'+str(MaxTime))
-DataFilteredInSpeed=np.array(DataFilteredInSpeed)
-
-# %%
-#plt.figure()
-#plt.imshow(weight_matrix)
-plt.figure(dpi=800)
-plt.imshow((np.transpose(DataFilteredInSpeed)), cmap="seismic",   aspect='auto',    origin='lower',vmin= -200,vmax=200)
-plt.savefig('SpeedFiltered.png')
-# %%
-'''
