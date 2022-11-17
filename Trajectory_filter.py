@@ -64,13 +64,13 @@ print('当前工作路径是：' + os.getcwd())  # 显示当前路径
 tdms文件的时间是以UTC+0来命名，两者存在区别
 '''
 DataPath='/home/huangwj/DAS/BoatTrajectory/DataforAIS'
-ST_UTC8=datetime.datetime.strptime("24/07/22 21:10", "%d/%m/%y %H:%M")
-ET_UTC8=datetime.datetime.strptime("24/07/22 21:30", "%d/%m/%y %H:%M")
+ST_UTC8=datetime.datetime.strptime("27/07/22 8:00", "%d/%m/%y %H:%M")
+ET_UTC8=datetime.datetime.strptime("27/07/22 8:59", "%d/%m/%y %H:%M")
 ST_UTC0=ST_UTC8-timedelta(hours=8)
 ET_UTC0=ET_UTC8-timedelta(hours=8)
 FileSet,times=DasFileRead(ST_UTC0,ET_UTC0,DataPath)
 ST=times[0]
-ET=times[-1]
+ET=times[-1]+timedelta(minutes=1)
 ST=ST+timedelta(hours=8)
 ET=ET+timedelta(hours=8)
 print('Minutes of the DAS data is ',len(FileSet))
@@ -134,7 +134,7 @@ CWindow = slice(c_start, c_end, c_interval)
 DataSlice = FILTER_Data[TWindow, CWindow]
 
 # 对some_data 进行采样，因为原始数据每秒采样1000，可以降为200个点以方便人为的判断
-DownSampleRate = 10 #输入的采样数据为1秒1000个点，这里设置每秒采样的点数
+DownSampleRate = 10#输入的采样数据为1秒1000个点，这里设置每秒采样的点数
 FreqDownSample = DownSampleRate  #下采样频率
 TDownSample = slice(0, DataCoordX, int(1000 / DownSampleRate))
 DataDownSample = DataSlice[TDownSample, :]
@@ -158,17 +158,16 @@ FiberBoatMessage=AISData(PosFile,StaticFile,ST,ET)
 
 #%%画出振动时空图
 
-Tstart = 1  #minute
+Tstart = 0  #minute
 Tend = -1   #minute
-TimeWin = slice(Tstart*60*DownSampleRate, Tend*60*DownSampleRate, 1)
+TimeWin = slice(int(Tstart*60*DownSampleRate), -1, 1)
 Cstart = 0
 Cend= -1
 Cwin = slice(Cstart,Cend,1)
 
 ShowData=(FILTER_Data[TimeWin,Cwin])
 
-MinValue=200
-#ShowData=np.maximum(ShowData,MinValue)
+
 
 #Z-score and threshold filtering
 ShowData=(ShowData-np.mean(ShowData))/np.std(ShowData,ddof=1)
@@ -181,10 +180,8 @@ ShowData=ShowData.reshape(X,Y)
 '''
 #%%
 fig1=plt.figure(dpi=400,figsize=(13,10))    
-ax1 = fig1.add_subplot(1,1,1)
-#plt.imshow((np.abs(np.transpose(ShowData))), cmap="seismic", aspect='auto',origin='lower',vmin= 0,vmax=600) # cmap='seismic',, 
-#plt.imshow(((np.transpose(ShowData))), cmap="bwr", aspect='auto',origin='lower',vmin= MinValue,vmax=700) # cmap='seismic',, 
-plt.imshow(((np.transpose(ShowData))), cmap="bwr", aspect='auto',origin='lower',vmin=-3,vmax=3) # cmap='seismic',, 
+ax1 = fig1.add_subplot(1,1,1) 
+plt.imshow(np.transpose(ShowData), cmap="bwr", aspect='auto',origin='lower',vmin=-3,vmax=3) # cmap=''bwr,, 
 
 #计算坐标轴的刻度大小,合计10个时间戳(计算有问题，需要考虑数据的实际距离以及截断)
 TimeTicks=10
@@ -206,10 +203,10 @@ if PLOTANCHOR==1:
 #数据切片
 
 
-Tstart = 2.5  #minute
-Tend =6.5   #minute
-Cstart = 1800
-Cend= 2500
+Tstart =2 #2.5  #minute
+Tend =3#5.5   #minute
+Cstart = 600 #1800
+Cend= 950 #2500
 RegionSliceX=[Tstart*60*DownSampleRate,Tend*60*DownSampleRate,Tend*60*DownSampleRate,Tstart*60*DownSampleRate,Tstart*60*DownSampleRate]
 RegionSliceY=[Cstart,Cstart,Cend,Cend,Cstart]
 plt.plot(RegionSliceX,RegionSliceY,linewidth=1)
