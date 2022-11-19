@@ -235,8 +235,8 @@ def AnchorShip(FiberBoatMessage,MINCHANNEL,n_channels,channel_spacing,ST,ET,TT):
     Dist=list(FiberBoatMessage['disFromEnd/Km'])
     #区域距离标定(3.33和120都是经验参数)
     #RegionDistUpper=list(n_channels-(Dist+3.33)*1000/channel_spacing+120)
-    RegionDistUpper=[round(n_channels-(i+3.33)*1000/channel_spacing+200)-MINCHANNEL for i in Dist]
-    RegionDistdown=[round(n_channels-(i+3.33)*1000/channel_spacing-200)-MINCHANNEL for i in Dist]
+    RegionDistUpper=[round(n_channels-(i-MINCHANNEL+3.33)*1000/channel_spacing+200) for i in Dist]
+    RegionDistdown=[round(n_channels-(i-MINCHANNEL+3.33)*1000/channel_spacing-200) for i in Dist]
     deltaCTUpper=[i+round(TT*0.05) for i in vline_indx]
     deltaCTdown=[i-round(TT*0.05) for i in vline_indx]
     CT=list(FiberBoatMessage['Time_0'])

@@ -35,7 +35,7 @@ from DASFileRead import DasFileRead
 from tdms_reader_1 import *
 from AISData import AISData,AnchorShip
 from DASFilter import bandpass_f,WeightMatrix
-
+from numpy import NaN
 import skimage 
 from skimage.transform import radon
 def PlotRadon(ShowDataSlice):
@@ -61,11 +61,14 @@ def SpeedOnRadon(sinogram,resolution,channel_spacing,fs):
 #求解最大的斜率
     deg_y=np.argmax(sinogram)%sinogram.shape[1]/resolution*180
     pos_x=int(np.argmax(sinogram)/sinogram.shape[1])
-    print(pos_x,deg_y)
+    #print(pos_x,deg_y)
     #将斜率换算成速度m/s
-    speed=1/tan(radians(deg_y))*channel_spacing*fs
+    if tan(radians(deg_y))==0:
+        speed=NaN
+    else:
+        speed=1/tan(radians(deg_y))*channel_spacing*fs
     #speed1=tan(radians(90-deg_y))*channel_spacing*fs
-    print('Radon 域最大值所对应的deg相应的速度',speed)
+    #print('Radon 域最大值所对应的deg相应的速度',speed)
 
     #求解最大的斜率，平均每行的最大值索引
     deg_y_list=[]
@@ -77,14 +80,22 @@ def SpeedOnRadon(sinogram,resolution,channel_spacing,fs):
     df['sino']=abs(df['sino'])
     df.sort_values(by='sino',ascending=False,inplace=True)
     deg_y_list=df['deg'][0:10]
-    print(np.mean(deg_y_list),np.median(deg_y_list))
-    s1=1/tan(radians(np.mean(deg_y_list)))*channel_spacing*fs
-    s2=1/tan(radians(np.median(deg_y_list)))*channel_spacing*fs
-    print('选取Radon域上前10的最大值所对应的deg\n')
-    print('均值',s1,'中位数',s2)
+    #print(np.mean(deg_y_list),np.median(deg_y_list))
+    if tan(radians(np.mean(deg_y_list)))==0:
+        s1=NaN
+    else:
+        s1=1/tan(radians(np.mean(deg_y_list)))*channel_spacing*fs
+    if tan(radians(np.median(deg_y_list)))==0:
+        s2=NaN
+    else:
+        s2=1/tan(radians(np.median(deg_y_list)))*channel_spacing*fs
+    #print('选取Radon域上前10的最大值所对应的deg\n')
+    #print('均值',s1,'中位数',s2)
+    return np.mean(deg_y_list),np.median(deg_y_list),s1,s2
 
 def SNROnRadon(sinogram):
     #[1]M. T. Rey, J. K. E. Tunaley, J. T. Folinsbee, P. A. Jahans, J. A. Dixon, and M. R. Vant, "Application Of Radon Transform Techniques To Wake Detection In Seasat-A SAR Images," IEEE Transactions on Geoscience and Remote Sensing, vol. 28, pp. 553-560, 1990.
-
-    print('SNR on Radon domain: ',(np.max(sinogram)-np.mean(sinogram))/np.std(sinogram,ddof=1))
+    SNR=(np.max(sinogram)-np.mean(sinogram))/np.std(sinogram,ddof=1)
+    print('SNR on Radon domain: ',SNR)
+    return SNR
 
