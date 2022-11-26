@@ -158,6 +158,10 @@ fs=DownSampleRate
 print('Filter!')
 FILTER_Data=DataDownSample
 
+#读取时间区间的船只数据
+PosFile='pos_zf_gsd_1657814400_1660579199_742.csv'
+StaticFile='static_zf_gsd_1657814400_1660579199_742.csv'
+FiberBoatMessage=AISData(PosFile,StaticFile,ST,ET)
 
 #%%画出振动时空图
 
@@ -170,13 +174,68 @@ Cwin = slice(Cstart,Cend,1)
 
 ShowData=(FILTER_Data[TimeWin,Cwin])
 
+CT=list(FiberBoatMessage['CrossTime'])
+deltaCT=[]
+for i in range(0,len(CT)):
+    deltaCT.append(round((CT[i]-ST)/(ET-ST)*ShowData.shape[0]))
+
+vline_indx = deltaCT
+
+#利用AIS数据在DAS数据上标定船只通过的时间以及位置
+Dist=list(FiberBoatMessage['disFromEnd/Km'])
+#区域距离标定(3.33和120都是经验参数)
+#RegionDistUpper=list(n_channels-(Dist+3.33)*1000/channel_spacing+120)
+RegionDistUpper=[round(n_channels-(i+3.33)*1000/channel_spacing+200) for i in Dist]
+RegionDistdown=[round(n_channels-(i+3.33)*1000/channel_spacing-200) for i in Dist]
+
+
+deltaCTUpper=[i+round(ShowData.shape[0]*0.05) for i in vline_indx]
+deltaCTdown=[i-round(ShowData.shape[0]*0.05) for i in vline_indx]
+
+
+CT=list(FiberBoatMessage['Time_0'])
+deltaCT=[]
+for i in range(0,len(CT)):
+    deltaCT.append(round((CT[i]-ST)/(ET-ST)*ShowData.shape[0]))
+
+
+deltaCTdown=deltaCT
+
+CT=list(FiberBoatMessage['Time_1'])
+deltaCT=[]
+for i in range(0,len(CT)):
+    deltaCT.append(round((CT[i]-ST)/(ET-ST)*ShowData.shape[0]))
+deltaCTUpper=deltaCT
+
 fig1=plt.figure(dpi=1000)    
 ax1 = fig1.add_subplot(1,1,1)
 plt.imshow(((np.transpose(ShowData))), cmap="seismic", aspect='auto',origin='lower',vmin= 100,vmax=600) # cmap='seismic',, 
+
+#计算坐标轴的刻度大小,合计10个时间戳(计算有问题，需要考虑数据的实际距离以及截断)
+TimeTicks=10
+TI=(ET-ST)/TimeTicks
+
+xlabel=np.linspace(0,ShowData.shape[0],TimeTicks+1)
+plt.xticks(xlabel,pd.date_range(ST.strftime("%Y%m%d %H%M"),ET.strftime("%Y%m%d %H%M"),freq=TI),rotation = 60)
+ylabel=np.arange(0,n_channels,500)
+plt.yticks(ylabel,np.round(ylabel*channel_spacing/1000))
+
+
+#区域标定
+for i in range(0,len(deltaCTdown)):
+    plt.plot([deltaCTdown[i],deltaCTUpper[i],deltaCTUpper[i],deltaCTdown[i],deltaCTdown[i]],[RegionDistdown[i],RegionDistdown[i],RegionDistUpper[i],RegionDistUpper[i],RegionDistdown[i]],linewidth=1)
 
 #plt.vlines(vline_indx, 0, 4000, colors='g', linestyles='dashed', label='垂直线')
 plt.savefig("Space-time diagram.png")
 plt.show()
 print("Space-time diagram.png")
 #%%
+Ccord=ShowData.shape[0]
+Tcord=ShowData.shape[1]
+plt.figure(dpi=800)
+plt.plot(np.arange(0,4094,1),ShowData[int(Ccord/2),:])
+plt.xlabel('Channel')
+plt.ylabel('Amplitude')
+plt.savefig("Slice diagram.png")
+
 # %%

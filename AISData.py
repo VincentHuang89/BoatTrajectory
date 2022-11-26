@@ -222,7 +222,7 @@ def FilterBoat(FiberBoatMessage:pd.DataFrame,DT:datetime.datetime,Angle:list,Dis
     Boat_speed=Boat_speed[Boat_speed['CrossSpeed(m/s)']<Speed[1]]
     return Boat_speed,[len(Boat_TimeLimit),len(Boat_angel),len(Boat_dis),len(Boat_speed)]
 
-def AnchorShip(FiberBoatMessage,MINCHANNEL,n_channels,channel_spacing,ST,ET,TT):
+def AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing,ST,ET,TT):
     
     CT=list(FiberBoatMessage['CrossTime'])
     deltaCT=[]
@@ -235,20 +235,46 @@ def AnchorShip(FiberBoatMessage,MINCHANNEL,n_channels,channel_spacing,ST,ET,TT):
     Dist=list(FiberBoatMessage['disFromEnd/Km'])
     #区域距离标定(3.33和120都是经验参数)
     #RegionDistUpper=list(n_channels-(Dist+3.33)*1000/channel_spacing+120)
-    RegionDistUpper=[round(n_channels-(i-MINCHANNEL+3.33)*1000/channel_spacing+200) for i in Dist]
-    RegionDistdown=[round(n_channels-(i-MINCHANNEL+3.33)*1000/channel_spacing-200) for i in Dist]
+    #RegionDistUpper=[round(n_channels-(i-MINCHANNEL+3.33)*1000/channel_spacing+200) for i in Dist]
+    #RegionDistdown=[round(n_channels-(i-MINCHANNEL+3.33)*1000/channel_spacing-200) for i in Dist]
+    ChannelOffSet=round(3.33*1000/channel_spacing)
+    DISTFROMEND=[n_channels-round(i*1000/channel_spacing)-ChannelOffSet for i in Dist]
+    MINCHANNEL=round(MINCHANNEL*1000/channel_spacing)
+    MAXCHANNEL=round(MAXCHANNEL*1000/channel_spacing)
+    RegionDistUpper=[]
+    RegionDistdown=[]
+    RegionArea=200 #channel
+    ShipIndex=[]
+    for dist in DISTFROMEND:
+        if dist>MINCHANNEL and dist<MAXCHANNEL:
+            RegionDistUpper.append(min(dist+RegionArea,MAXCHANNEL))
+            RegionDistdown.append(max(dist-RegionArea,MINCHANNEL))
+            ShipIndex.append(DISTFROMEND.index(dist))
+    RegionDistUpper=list(np.array(RegionDistUpper)-MINCHANNEL)   
+    RegionDistdown=list(np.array(RegionDistdown)-MINCHANNEL)   
+    print(RegionDistUpper,RegionDistdown)
+
     deltaCTUpper=[i+round(TT*0.05) for i in vline_indx]
     deltaCTdown=[i-round(TT*0.05) for i in vline_indx]
     CT=list(FiberBoatMessage['Time_0'])
     deltaCT=[]
     for i in range(0,len(CT)):
         deltaCT.append(round((CT[i]-ST)/(ET-ST)*TT))
-    deltaCTdown=deltaCT
+    deltaCTdown=[]
+    for i in ShipIndex:
+        deltaCTdown.append(deltaCT[i])
+
+
     CT=list(FiberBoatMessage['Time_1'])
     deltaCT=[]
     for i in range(0,len(CT)):
         deltaCT.append(round((CT[i]-ST)/(ET-ST)*TT))
-    deltaCTUpper=deltaCT
+    deltaCTUpper=[]   
+    for i in ShipIndex:
+        deltaCTUpper.append(deltaCT[i])
+    
+    print(deltaCTdown,deltaCTUpper)
+
     return deltaCTUpper,deltaCTdown,RegionDistUpper,RegionDistdown
 
 def ShipTraj(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetime.datetime,MMSI):#船只轨迹数据读取

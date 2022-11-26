@@ -19,3 +19,7 @@ Trajectory_filter：1）将关于radon变换以及speed求解的功能重构成R
 20221117
 
 Trajectory_filter: 1)重构PlotDAS功能以及计算DAS图像的SNR, 调整X轴和Y轴的坐标；2)遍历采样率，筛选合适SNR下的speed，输出其平均值。3）修正时间标注功能，将ET调整为ET+minute(1)
+
+20221156
+
+1）对ShowDataSlice进行插值，使空间维度与时间维度一致，提高radon变换的分辨率，2）重构space-time diagram的标注功能，适应于不同的MINCHANNEL和MAXCHANNEL。
