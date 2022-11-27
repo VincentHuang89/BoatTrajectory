@@ -20,6 +20,17 @@ Trajectory_filter：1）将关于radon变换以及speed求解的功能重构成R
 
 Trajectory_filter: 1)重构PlotDAS功能以及计算DAS图像的SNR, 调整X轴和Y轴的坐标；2)遍历采样率，筛选合适SNR下的speed，输出其平均值。3）修正时间标注功能，将ET调整为ET+minute(1)
 
-20221156
+20221126
 
 1）对ShowDataSlice进行插值，使空间维度与时间维度一致，提高radon变换的分辨率，2）重构space-time diagram的标注功能，适应于不同的MINCHANNEL和MAXCHANNEL。
+
+20221127
+
+1）ShowDataSlice的空间维度决定了radon域上的角度分辨率。当空间维度较少时（波线不明显，较短时）应在空间维度上通过堆叠矩阵来增加空间维度的信息，因为只需要知道波线的斜率即可，矩阵的堆叠并不会对波线的斜率产生影响，增加了ShowDataSlice的堆叠功能
+
+2）在RadonWake里实现validation函数，以验证所求得波线斜率在ShowDataSlice上与各个波线之间的关系，是否平行。
+
+
+20221128
+
+拟增加ShowDataSlice的分辨率自动增强功能，因为多个采样率多次采样，其实对角度的提高并没有很好，主要在于欠采样的时候会严重影响波线的斜率，其次，过高的采样率会导致漫长的执行时间。

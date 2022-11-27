@@ -34,10 +34,10 @@ from datetime import timedelta
 from DASFileRead import DasFileRead
 from tdms_reader_1 import *
 from AISData import AISData,AnchorShip
-from DASFilter import bandpass_f,DataDiff,WeightMatrix,PlotDAS,DASNR,DASInterpolate
+from DASFilter import bandpass_f,DataDiff,WeightMatrix,PlotDAS,DASNR,DASInterpolate,Dup_Spat_Dim,Dup_Time_Dim
 import skimage 
 from skimage.transform import radon
-from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon
+from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon,ValidationSpeedOnRadon
 from scipy import stats
 #%%Params ---------------------------------------
 # filter or not
@@ -54,10 +54,10 @@ WAVEDIRECT=0
 # Z-score and threshold filter
 threshold=2
 #radon transfromation params
-Tstart =1.8 #2.5  #minute
-Tend =2  #5.5   #minute
-Cstart =11.15 #11.15 #1800  #Km
-Cend= 11.5 #11.3 #2500    #Km
+Tstart =1.8 #2.8  #1.8   #minute
+Tend =2# 3 #2     #minute
+Cstart =11.15#10 #11.15 #1800  #Km
+Cend= 11.3#11 #11.3 #2500    #Km
 
 Cstart=max(Cstart-MINCHANNEL,0)
 Cend=min(Cend-MINCHANNEL,MAXCHANNEL)
@@ -146,9 +146,9 @@ FILTER_Data=DataDiff(FILTER_Data,1)
 #降采样
 DataCoordX, DataCoordy = FILTER_Data.shape
 print('DataCoordX',DataCoordX,'DataCoordy',DataCoordy)
-DSR=np.arange(0.1,60,0.2)
+DSR=np.arange(1,100,1)
 #DSR=np.arange(250,1000,20)
-DSR=[1]
+#DSR=[100]
 res=[]
 for DownSampleRate in DSR:
 # 对some_data 进行采样，因为原始数据每秒采样1000，可以降为200个点以方便人为的判断
@@ -175,13 +175,18 @@ for DownSampleRate in DSR:
     TimeWin = slice(int(Tstart*60*DownSampleRate), max(-1,int(Tend*60*DownSampleRate)), 1)
     Cwin = slice(int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spacing)),1)
     ShowDataSlice=(ShowData[TimeWin,Cwin])
-       
+
+    ShowDataSlice=Dup_Spat_Dim(ShowDataSlice) #增强空间维度的细节
+    ShowDataSlice=Dup_Time_Dim(ShowDataSlice) #增强时间维度的细节
+
     scaling=round(ShowDataSlice.shape[0]/ShowDataSlice.shape[1],4)
+    channel_spacing_scaling=round((ShowDataSlice.shape[0]-1)/(ShowDataSlice.shape[1]-1),4)
     print('scaling:',scaling,ShowDataSlice.shape)
     if scaling>1:
         ShowDataSlice=DASInterpolate(ShowDataSlice)
     else:
         scaling=1
+        channel_spacing_scaling=1
     print('scaling:',scaling,ShowDataSlice.shape)
 
     ShowDataSlice=np.transpose((ShowDataSlice))
@@ -190,15 +195,16 @@ for DownSampleRate in DSR:
     DASNR(ShowData)
 
     # Radon transformation and analysis
-    print(ShowDataSlice)
+    print(ShowDataSlice.shape)
     sinogram=PlotRadon(ShowDataSlice)
     print("Radon done!")
     snr=SNROnRadon(sinogram)
-    deg_mean,deg_median,s_mean,s_median=SpeedOnRadon(sinogram,max(ShowDataSlice.shape),channel_spacing,DownSampleRate,scaling,WAVEDIRECT)
+    deg_mean,deg_median,s_mean,s_median=SpeedOnRadon(sinogram,max(ShowDataSlice.shape),channel_spacing,DownSampleRate,channel_spacing_scaling,WAVEDIRECT)
     res.append((DownSampleRate,snr,deg_mean,deg_median,s_mean,s_median))
     
     print(DownSampleRate)
-
+    res.append((DownSampleRate,snr,deg_mean,deg_median,s_mean,s_median))
+    
 
 
 RES=pd.DataFrame(res,columns=['DownSampleRate',"snr","deg_mean","deg_median","s_mean",'s_median'])
@@ -230,4 +236,7 @@ s_mean = RES1['s_mean']
 
 print('波线斜率',np.mean(s_mean))
 
-
+#在ShowDataslice上补充波线斜率直线
+speed=30
+DownSampleRate = 1000
+ValidationSpeedOnRadon(speed,FILTER_Data,DownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Tstart,Tend,Cstart,Cend,threshold)
