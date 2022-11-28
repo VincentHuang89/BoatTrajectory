@@ -92,19 +92,36 @@ def getDistance(lat1, lng1, lat2, lng2):
     s = s * EARTH_REDIUS
     return s
 
-def crosstime(tra_0,tra_1,cp,time_0,time_1):
-    s1=getDistance(cp[0],cp[1],tra_0[0],tra_0[1])
-    S=getDistance(tra_1[0],tra_1[1],tra_0[0],tra_0[1])
-    deltaT=(time_1-time_0)*s1/S
+def crosstime(tra_0,tra_1,cp,time_0,time_1,speed_0,speed_1):
+    l=getDistance(cp[0],cp[1],tra_0[0],tra_0[1])
+    L=getDistance(tra_1[0],tra_1[1],tra_0[0],tra_0[1])
+    '''
+    deltaT=(time_1-time_0)*l/L
     t=time_0+deltaT
+    '''
+    T=2*L/(speed_0+speed_1) #总耗时
+    a=(speed_1-speed_0)/T #加速度
+    v=math.sqrt(2*a*l+speed_0*speed_0)
+    if a==0:
+        deltaT=(time_1-time_0)*l/L
+    else:
+        deltaT=(time_1-time_0)*((v-speed_0)/a)/T
+    t=time_0+deltaT
+
     return t
 
 def crossSpeed(tra_0,tra_1,cp,speed_0,speed_1):
-    s1=getDistance(cp[0],cp[1],tra_0[0],tra_0[1])
-    S=getDistance(tra_1[0],tra_1[1],tra_0[0],tra_0[1])
+    l=getDistance(cp[0],cp[1],tra_0[0],tra_0[1])
+    L=getDistance(tra_1[0],tra_1[1],tra_0[0],tra_0[1])
+    '''
     deltaS=(speed_1-speed_0)*s1/S
-    t=speed_0+deltaS
-    return t
+    v=speed_0+deltaS
+    '''
+    T=2*L/(speed_0+speed_1) #总耗时
+    a=(speed_1-speed_0)/T #加速度
+    v=math.sqrt(2*a*l+speed_0*speed_0)
+
+    return v
 
 
 
@@ -160,13 +177,13 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
             Tra_1=np.array([lat[i+1],long[i+1]])
             if cross(FIBER_0,FIBER_1,Tra_0,Tra_1)==1:
                 [lati,lng],Tra_dirc=cross_point(FIBER_0,FIBER_1,    Tra_0,Tra_1)
-                t=crosstime(Tra_0,Tra_1,[lati,lng],traTime[i],  traTime[i+1])
-                s=crossSpeed(Tra_0,Tra_1,[lati,lng],speed[i],   speed[i+1])
+                t=crosstime(Tra_0,Tra_1,[lati,lng],traTime[i], traTime[i+1],speed[i], speed[i+1])
+                s=crossSpeed(Tra_0,Tra_1,[lati,lng],speed[i], speed[i+1])
                 d=getDistance(FIBER_1[0], FIBER_1[1], lati, lng)
                 crossFiberBoat.loc[len(crossFiberBoat.index)] =     (mmsi,t,traTime[i],traTime[i+1],(traTime[i+1]-traTime[i]).seconds/60,s, speed[i+1]-speed[i],lati,lng,d,Tra_dirc,math.    degrees(GetCrossAngle(FIBER_0,FIBER_1,Tra_0,    Tra_1)))
                 
     crossFiberBoat['MMSI']=crossFiberBoat['MMSI'].astype('str')
-    #删除过光纤前后时间差异较大的点，暂定为5分钟
+    #删除过光纤前后时间差异较大的点，暂定为10分钟
     crossFiberBoat=crossFiberBoat[crossFiberBoat['Time_0_1(min)']<5]
     #将速度从节换算为m/s
     crossFiberBoat['CrossSpeed']=crossFiberBoat['CrossSpeed']*1000/3600*1.852

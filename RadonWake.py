@@ -39,6 +39,9 @@ from numpy import NaN
 import skimage 
 from skimage.transform import radon
 from scipy import stats
+from DASFilter import bandpass_f,DataDiff,WeightMatrix,PlotDAS,DASNR,DASInterpolate,Dup_Spat_Dim,Dup_Time_Dim
+
+
 
 def PlotRadon(ShowDataSlice):
     fig, (ax1, ax2) = plt.subplots(1, 2)
@@ -141,3 +144,23 @@ def ValidationSpeedOnRadon(speed,FILTER_Data,DownSampleRate,channel_spacing,MINT
     plt.plot(x,y)
     print('Validation!')
     plt.savefig('validation.png')
+
+
+def EnhanceResolution(ShowDataSlice,DownSampleRate):
+    ReDownSampleRate=DownSampleRate
+    if ShowDataSlice.shape[0]>1000:
+        ReDownSample=ShowDataSlice.shape[0]//1000
+        TimeWin=slice(0,-1,ReDownSample)
+        ShowDataSlice=ShowDataSlice[TimeWin,:]
+        ReDownSampleRate=DownSampleRate/ReDownSample
+    ShowDataSlice=Dup_Spat_Dim(ShowDataSlice) #增强空间维度的细节
+    ShowDataSlice=Dup_Time_Dim(ShowDataSlice) #增强时间维度的细节
+    scaling=round(ShowDataSlice.shape[0]/ShowDataSlice.shape[1],4)
+    channel_spacing_scaling=round((ShowDataSlice.shape[0]-1)/(ShowDataSlice.shape[1]-1),4)
+    if scaling>1:
+        ShowDataSlice=DASInterpolate(ShowDataSlice)  #将空间维度的尺寸补充到和时间维度一致
+    else:
+        scaling=1
+        channel_spacing_scaling=1
+    Result=ShowDataSlice
+    return Result,ReDownSampleRate,channel_spacing_scaling
