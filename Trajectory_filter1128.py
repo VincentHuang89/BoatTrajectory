@@ -34,11 +34,11 @@ from datetime import timedelta
 from DASFileRead import DasFileRead
 from tdms_reader_1 import *
 from AISData import AISData,AnchorShip
-from DASFilter import bandpass_f,WeightMatrix,PlotDAS,DASNR
+from DASFilter import bandpass_f,DataDiff,WeightMatrix,PlotDAS,DASNR,DASInterpolate,Dup_Spat_Dim,Dup_Time_Dim
 import skimage 
 from skimage.transform import radon
-from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon
-
+from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon,ValidationSpeedOnRadon
+from scipy import stats
 #%%Params ---------------------------------------
 # filter or not
 FILTER=1
@@ -46,15 +46,18 @@ DownSampleRate = 100    #输入的采样数据为1秒1000个点，这里设置�
 # Showdata params
 MINTIME=0
 MAXTIME=-1
-MINCHANNEL=2
-MAXCHANNEL=4.4   #Km
+MINCHANNEL=0
+MAXCHANNEL=14   #Km
+#波线方向（左下到右上：0 （图像域的上半部分，deg：0-90），左上到右下：1，deg：90-180，展示所有：2）
+WAVEDIRECT=0
+
 # Z-score and threshold filter
 threshold=2
 #radon transfromation params
-Tstart =1.8 #2.5  #minute
-Tend =3  #5.5   #minute
-Cstart = 2.6 #1800  #Km
-Cend= 3.6 #2500    #Km
+Tstart =1.8 #2.8  #1.8   #minute
+Tend =2# 3 #2     #minute
+Cstart =11.15#10 #11.15 #1800  #Km
+Cend= 11.3#11 #11.3 #2500    #Km
 
 Cstart=max(Cstart-MINCHANNEL,0)
 Cend=min(Cend-MINCHANNEL,MAXCHANNEL)
@@ -81,8 +84,8 @@ print('当前工作路径是：' + os.getcwd())  # 显示当前路径
 tdms文件的时间是以UTC+0来命名，两者存在区别
 '''
 DataPath='/home/huangwj/DAS/BoatTrajectory/DataforAIS'
-ST_UTC8=datetime.datetime.strptime("27/07/22 8:00", "%d/%m/%y %H:%M")
-ET_UTC8=datetime.datetime.strptime("27/07/22 8:59", "%d/%m/%y %H:%M")
+ST_UTC8=datetime.datetime.strptime("24/07/22 21:08", "%d/%m/%y %H:%M")
+ET_UTC8=datetime.datetime.strptime("24/07/22 21:11", "%d/%m/%y %H:%M")
 ST_UTC0=ST_UTC8-timedelta(hours=8)
 ET_UTC0=ET_UTC8-timedelta(hours=8)
 FileSet,times=DasFileRead(ST_UTC0,ET_UTC0,DataPath)
@@ -134,11 +137,17 @@ if FILTER==1:
 else:
     FILTER_Data=Data
 
+#时间差分
+
+FILTER_Data=DataDiff(FILTER_Data,1)
+
+
 #%%
 #降采样
 DataCoordX, DataCoordy = FILTER_Data.shape
 print('DataCoordX',DataCoordX,'DataCoordy',DataCoordy)
-DSR=np.arange(0.1,40,0.2)
+DSR=np.arange(1,100,1)
+#DSR=np.arange(250,1000,20)
 #DSR=[100]
 res=[]
 for DownSampleRate in DSR:
@@ -146,35 +155,56 @@ for DownSampleRate in DSR:
     TDownSample = slice(0, DataCoordX, int(1000 / DownSampleRate))
     DataDownSample = FILTER_Data[TDownSample, :]
 
-
     #画图展示的数据
 
     TimeWin = slice(int(MINTIME*60*DownSampleRate), max(-1,int(MAXTIME*60*DownSampleRate)), 1)
     ShowData=DataDownSample[TimeWin,slice(int(MINCHANNEL*1000/channel_spacing),int(MAXCHANNEL*1000/channel_spacing),1)]
 
+    #对空间维度进行插值，使其接近时间的维度
+
     #Z-score and threshold filtering
-    ShowData=(ShowData-np.mean(ShowData))/np.std(ShowData,ddof=1)
+    #ShowData=(ShowData-np.mean(ShowData))/np.std(ShowData,ddof=1)
+    ShowData = stats.zscore(ShowData, axis=None)
     STD=threshold*np.std(ShowData,ddof=1)
     ShowData=((ShowData>STD)|(ShowData<-STD))*ShowData
-
+    #print(ShowData)
     #Prepare data for radon transformation
 
-    RegionSliceX=[Tstart*60*DownSampleRate,Tend*60*DownSampleRate,Tend*60*DownSampleRate,Tstart*60*DownSampleRate,Tstart*60*DownSampleRate]
-    RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),int(Cend*1000/channel_spacing),int(Cend*1000/channel_spacing),int(Cstart*1000/channel_spacing)]
-    TimeWin = slice(int(Tstart*60*DownSampleRate), int(Tend*60*DownSampleRate), 1)
-    Cwin = slice(int(Cstart*1000/channel_spacing),int(Cend*1000/channel_spacing),1)
+    RegionSliceX=[Tstart*60*DownSampleRate,max(-1,Tend*60*DownSampleRate),max(-1,Tend*60*DownSampleRate),Tstart*60*DownSampleRate,Tstart*60*DownSampleRate]
+    RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spacing)),max(-1,int(Cend*1000/channel_spacing)),int(Cstart*1000/channel_spacing)]
+    TimeWin = slice(int(Tstart*60*DownSampleRate), max(-1,int(Tend*60*DownSampleRate)), 1)
+    Cwin = slice(int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spacing)),1)
     ShowDataSlice=(ShowData[TimeWin,Cwin])
+
+    ShowDataSlice=Dup_Spat_Dim(ShowDataSlice) #增强空间维度的细节
+    ShowDataSlice=Dup_Time_Dim(ShowDataSlice) #增强时间维度的细节
+
+    scaling=round(ShowDataSlice.shape[0]/ShowDataSlice.shape[1],4)
+    channel_spacing_scaling=round((ShowDataSlice.shape[0]-1)/(ShowDataSlice.shape[1]-1),4)
+    print('scaling:',scaling,ShowDataSlice.shape)
+    if scaling>1:
+        ShowDataSlice=DASInterpolate(ShowDataSlice)
+    else:
+        scaling=1
+        channel_spacing_scaling=1
+    print('scaling:',scaling,ShowDataSlice.shape)
+
     ShowDataSlice=np.transpose((ShowDataSlice))
     #%%
-    #PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels)
-    #DASNR(ShowData)
+    PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels)
+    DASNR(ShowData)
+
     # Radon transformation and analysis
+    print(ShowDataSlice.shape)
     sinogram=PlotRadon(ShowDataSlice)
+    print("Radon done!")
     snr=SNROnRadon(sinogram)
-    deg_mean,deg_median,s_mean,s_median=SpeedOnRadon(sinogram,max(ShowDataSlice.shape),channel_spacing,DownSampleRate)
+    deg_mean,deg_median,s_mean,s_median=SpeedOnRadon(sinogram,max(ShowDataSlice.shape),channel_spacing,DownSampleRate,channel_spacing_scaling,WAVEDIRECT)
     res.append((DownSampleRate,snr,deg_mean,deg_median,s_mean,s_median))
- 
+    
     print(DownSampleRate)
+    res.append((DownSampleRate,snr,deg_mean,deg_median,s_mean,s_median))
+    
 
 
 RES=pd.DataFrame(res,columns=['DownSampleRate',"snr","deg_mean","deg_median","s_mean",'s_median'])
@@ -198,7 +228,15 @@ plt.savefig('SNR.png')
 #波线斜率
 RES.dropna(inplace=True)
 RES.sort_values(by='snr',ascending=False,inplace=True)
-RES1=RES[RES['snr']>20]
+#
+SNR_threshold=np.mean(RES['snr'])+0.75*(np.max(RES['snr'])-np.mean(RES['snr']))
+
+RES1=RES[RES['snr']>SNR_threshold]
 s_mean = RES1['s_mean']
 
 print('波线斜率',np.mean(s_mean))
+
+#在ShowDataslice上补充波线斜率直线
+speed=30
+DownSampleRate = 1000
+ValidationSpeedOnRadon(speed,FILTER_Data,DownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Tstart,Tend,Cstart,Cend,threshold)
