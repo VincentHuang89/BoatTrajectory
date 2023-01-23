@@ -37,30 +37,45 @@ from AISData import AISData,AnchorShip
 from DASFilter import bandpass_f,DataDiff,WeightMatrix,PlotDAS,DASNR,DASInterpolate,Dup_Spat_Dim,Dup_Time_Dim
 import skimage 
 from skimage.transform import radon
-from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon,ValidationSpeedOnRadon,EnhanceResolution
+from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon,ValidationSpeedOnRadon,EnhanceResolution,CalculateKEnv
 from scipy import stats
 #%%Params ---------------------------------------
+#Save Params or not
+SaveParams=0
 # filter or not
 FILTER=1
 DownSampleRate = 50   #输入的采样数据为1秒1000个点，这里设置每秒采样的点数
 # Showdata params
 MINTIME=0
-MAXTIME=-1
-MINCHANNEL=0
-MAXCHANNEL=14   #Km
+MAXTIME=3
+MINCHANNEL=7
+MAXCHANNEL=11  #Km
 #波线方向（左下到右上：0 （图像域的上半部分，deg：0-90），左上到右下：1，deg：90-180，展示所有：2）
-WAVEDIRECT=0
+WAVEDIRECT=1
 
 # Z-score and threshold filter
-threshold=2
+threshold=1.5
 #radon transfromation params
-Tstart =1.8 #2.8  #1.8   #minute
-Tend =2# 3 #2     #minute
-Cstart =11.15#10 #11.15 #1800  #Km
-Cend= 11.3#11 #11.3 #2500    #Km
-
+Tstart =1.5
+Tend =1.8
+Cstart =8.6
+Cend= 9.1
+CSTART=Cstart
+CEND=Cend
 Cstart=max(Cstart-MINCHANNEL,0)
 Cend=min(Cend-MINCHANNEL,MAXCHANNEL)
+#To anchor the ship or not in DAS figure with AIS data
+PLOTANCHOR=0
+
+#To anchor the dataslice based on Tstart,Tend,Cstart,Cend
+PLOTREGION=1
+
+#Denoise Radon-domain data or not 
+DENOISE_RADON=1
+
+#Enhance the resolution of DataSlice in channel and time dimension or not
+SPACE_EN=1
+TIME_EN=1
 #---------------------------------------------------
 
 start = time.time()
@@ -84,8 +99,13 @@ print('当前工作路径是：' + os.getcwd())  # 显示当前路径
 tdms文件的时间是以UTC+0来命名，两者存在区别
 '''
 DataPath='/home/huangwj/DAS/BoatTrajectory/DataforAIS'
-ST_UTC8=datetime.datetime.strptime("24/07/22 21:08", "%d/%m/%y %H:%M")
-ET_UTC8=datetime.datetime.strptime("24/07/22 21:11", "%d/%m/%y %H:%M")
+SHIP=0
+MMSI=['413260090','413208430','413471740']
+StartTime=["24/07/22 09:54","24/07/22 10:02","24/07/22 21:09"]
+EndTime=["24/07/22 10:03","24/07/22 10:03","24/07/22 21:11"]
+
+ST_UTC8=datetime.datetime.strptime(StartTime[SHIP], "%d/%m/%y %H:%M")
+ET_UTC8=datetime.datetime.strptime(EndTime[SHIP], "%d/%m/%y %H:%M")
 ST_UTC0=ST_UTC8-timedelta(hours=8)
 ET_UTC0=ET_UTC8-timedelta(hours=8)
 FileSet,times=DasFileRead(ST_UTC0,ET_UTC0,DataPath)
@@ -94,6 +114,14 @@ ET=times[-1]+timedelta(minutes=1)
 ST=ST+timedelta(hours=8)
 ET=ET+timedelta(hours=8)
 print('Minutes of the DAS data is ',len(FileSet))
+
+ST1=ST+timedelta(minutes=MINTIME)
+if MAXTIME==-1:
+    ET1=ET
+else:
+    ET1=ST+timedelta(minutes=MAXTIME)
+
+
 
 #%%Read DAS data files
 for i in range(0,len(FileSet)):
@@ -160,7 +188,9 @@ ShowData=((ShowData>STD)|(ShowData<-STD))*ShowData
 #plot ShowData and anchor the data sliced region
 RegionSliceX=[Tstart*60*DownSampleRate,max(-1,Tend*60*DownSampleRate),max(-1,Tend*60*DownSampleRate),Tstart*60*DownSampleRate,Tstart*60*DownSampleRate]
 RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spacing)),max(-1,int(Cend*1000/channel_spacing)),int(Cstart*1000/channel_spacing)]
-PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels)
+
+
+PlotDAS(ShowData,ST1,ET1,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels,PLOTANCHOR,PLOTREGION)  
 DASNR(ShowData)
 
 
@@ -170,12 +200,12 @@ Cwin = slice(int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spaci
 ShowDataSlice=(ShowData[TimeWin,Cwin])
 
 #readjust the time dimension of the ShowDataSlice, to avoid the time-consuming calcualtion in the radon transformation caused by the too long time dimension
-ShowDataSlice,ReDownSampleRate,channel_spacing_scaling=EnhanceResolution(ShowDataSlice,DownSampleRate)
+ShowDataSlice,ReDownSampleRate,channel_spacing_scaling=EnhanceResolution(ShowDataSlice,DownSampleRate,SPACE_EN,TIME_EN)
 print('ReDownSampleRate',ReDownSampleRate)
 ShowDataSlice=np.transpose((ShowDataSlice))
 
 # Radon transformation and analysis
-sinogram=PlotRadon(ShowDataSlice)
+sinogram=PlotRadon(ShowDataSlice,DENOISE_RADON)
 print("Radon done!")
 snr=SNROnRadon(sinogram)
 deg_mean,deg_median,s_mean,s_median=SpeedOnRadon(sinogram,max(ShowDataSlice.shape),channel_spacing,ReDownSampleRate,channel_spacing_scaling,WAVEDIRECT)
@@ -189,4 +219,18 @@ speed=np.mean(s_mean)
 print('Estimated ship speed: ',speed)
 
 #To validate the accuracy of the estimated speed, plot the line according to the estimated speed in the ShowDataSlice image.
-ValidationSpeedOnRadon(speed,FILTER_Data,ReDownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Tstart,Tend,Cstart,Cend,threshold)
+ShowDataSlice=ValidationSpeedOnRadon(speed,FILTER_Data,ReDownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Tstart,Tend,Cstart,Cend,threshold,WAVEDIRECT)
+
+Env_speed=CalculateKEnv(ShowDataSlice,channel_spacing,ReDownSampleRate)
+print(Env_speed)
+#Save setting Params to excel
+if SaveParams==1:
+    df=pd.DataFrame(np.array([FILTER,DownSampleRate,MINTIME,MAXTIME,MINCHANNEL,WAVEDIRECT,threshold,Tstart,Tend,CSTART,CEND,ST_UTC8,ET_UTC8,speed]).reshape(1,-1),columns=["FILTER","DownSampleRate","MINTIME","MAXTIME","MINCHANNEL","WAVEDIRECT","threshold","Tstart","Tend","Cstart","Cend","ST_UTC8","ET_UTC8","Speed of wave along the fiber"])
+
+    if not os.path.exists('Analyze_DAS_Data.xlsx'):
+        df.to_excel("Analyze_DAS_Data.xlsx")
+
+    else: 
+        res = pd.read_excel('Analyze_DAS_Data.xlsx',index_col=0)
+        df = pd.concat([res,df],axis=0,ignore_index=1)
+        df.to_excel("Analyze_DAS_Data.xlsx")

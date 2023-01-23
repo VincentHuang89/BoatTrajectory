@@ -70,7 +70,7 @@ def WavePattern(a,n):
     X=[]
     Y=[]
     Y1=[]
-    for k in range(1,1000):
+    for k in np.arange(1,40,0.01):
         X.append(x(a,k,n))
         Y.append((y(a,k,n)))
         Y1.append(-(y(a,k,n)))
@@ -107,7 +107,7 @@ def move(X,Y,angle,dist):
 def PlotBoatWave(v,h,angle,dist):
     N=FroudeNum(v,h)
     A=5
-    plt.figure(figsize=(10,10))
+    plt.figure(dpi=300,figsize=(10,10))
     #plt.xlim(-8,8)
     #plt.ylim(-8,8)
     trajx=np.arange(-10,10,0.1)
@@ -125,12 +125,12 @@ def PlotBoatWave(v,h,angle,dist):
         RMX,RMY=move(RX,RY,angle,dist)
         RMX1,RMY1=move(RX1,RY1,angle,dist)
 
-        lines=plt.plot((RX),(RY))
+        lines=plt.plot((RX),(RY),lw=3)
         clr=lines[0].get_color()
-        plt.plot((RX1),(RY1),color=clr)
-        lines=plt.plot(RMX,RMY)
+        plt.plot((RX1),(RY1),color=clr,lw=3)
+        lines=plt.plot(RMX,RMY,lw=3)
         clr=lines[0].get_color()
-        plt.plot(RMX1,RMY1,color=clr)
+        plt.plot(RMX1,RMY1,color=clr,lw=3)
 
 
 #判断与x=0的交点
@@ -176,7 +176,7 @@ def PlotWaveInDAS(crossp):
 def PlotWaveInDas(v,h,angle,T,A):  
     N=FroudeNum(v,h)
     delta_T=0.01
-    plt.figure(dpi=800,figsize=(10,10))
+    plt.figure(dpi=300,figsize=(10,10))
     for a in range(1,A+1):
         crossp1=[]
         crossp2=[]
@@ -196,6 +196,6 @@ def PlotWaveInDas(v,h,angle,T,A):
         x2=np.arange(0,len(crossp2),1)
         x2=x2*delta_T
 
-        plt.plot(x1,crossp1,lw=0.5)
-        plt.plot(x2,crossp2,lw=0.5)
+        plt.plot(x1,crossp1,lw=3)
+        plt.plot(x2,crossp2,lw=3)
     plt.savefig('WavePatternInDas.png')

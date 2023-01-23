@@ -23,8 +23,8 @@ else:
 
 
 #%%按照时间区间筛选
-ST_UTC8=datetime.datetime.strptime("01/07/22 00:01", "%d/%m/%y %H:%M")
-ET_UTC8=datetime.datetime.strptime("30/08/22 23:59", "%d/%m/%y %H:%M")
+ST_UTC8=datetime.datetime.strptime("24/07/22 00:01", "%d/%m/%y %H:%M")
+ET_UTC8=datetime.datetime.strptime("24/07/22 23:59", "%d/%m/%y %H:%M")
 ST_UTC0=ST_UTC8-timedelta(hours=8)
 ET_UTC0=ET_UTC8-timedelta(hours=8)
 
@@ -34,12 +34,12 @@ FiberBoatMessage.sort_values(by='CrossTime',ascending=True,inplace=True,ignore_i
 FiberBoatMessage.to_excel('FiberBoatMessage.xlsx')
 
 #%%画出船轨迹
-'''
+
 M= folium.Map(location=[22.1,113.8],width=600,height=600,zoom_start=12)
-MMSI=['413510040','538006097'] 
-M=PlotTraj(PosFile,StaticFile,ST_UTC8,ET_UTC8,MMSI,M)
-M
-'''
+MMSI=['413260090'] 
+PlotTraj(PosFile,StaticFile,ST_UTC8,ET_UTC8,MMSI,M)
+
+#%%
 DT=timedelta(minutes=10)
 Angle=[85,95]
 Dist=[0,9]

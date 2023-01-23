@@ -37,3 +37,8 @@ Trajectory_filter: 1)重构PlotDAS功能以及计算DAS图像的SNR, 调整X轴�
 Trajectory_filter：1）删除过个采样率多次采样的功能，调整为单次采样；2）补充了空间和时间分辨率的自适应增强功能，先通过在时间维度上重采样ShowDataSlice，实现时间维度的自动调整（2000以下），再实现空间维度上的矩阵堆叠，增加空间维度上的信息。
 
 AISData：调整船轨迹过光纤的速度和时间判定，从原来的默认匀速到现在的匀加速。
+
+
+20230112
+
+Trajectory_filter：按照MMSI来控制输入的数据文件的范围；根据时间控制参数Tstart和Tend来调整PlotDAS函数的时间标注。
