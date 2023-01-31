@@ -38,6 +38,7 @@ from DASFilter import bandpass_f,DataDiff,WeightMatrix,PlotDAS,DASNR,DASInterpol
 import skimage 
 from skimage.transform import radon
 from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon,ValidationSpeedOnRadon,EnhanceResolution,CalculateKEnv
+from Paperfigure import PlotK_KenvLine,PlotRadonInPaper,PlotSimulInDAS
 from scipy import stats
 #%%Params ---------------------------------------
 #Save Params or not
@@ -101,6 +102,10 @@ tdms文件的时间是以UTC+0来命名，两者存在区别
 DataPath='/home/huangwj/DAS/BoatTrajectory/DataforAIS'
 SHIP=0
 MMSI=['413260090','413208430','413471740']
+V=[13.86,13.82,12.83]
+Angle=[119.86,58.22,123.26]
+h=7
+
 StartTime=["24/07/22 09:54","24/07/22 10:02","24/07/22 21:09"]
 EndTime=["24/07/22 10:03","24/07/22 10:03","24/07/22 21:11"]
 
@@ -189,7 +194,7 @@ ShowData=((ShowData>STD)|(ShowData<-STD))*ShowData
 RegionSliceX=[Tstart*60*DownSampleRate,max(-1,Tend*60*DownSampleRate),max(-1,Tend*60*DownSampleRate),Tstart*60*DownSampleRate,Tstart*60*DownSampleRate]
 RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spacing)),max(-1,int(Cend*1000/channel_spacing)),int(Cstart*1000/channel_spacing)]
 
-
+'''
 PlotDAS(ShowData,ST1,ET1,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels,PLOTANCHOR,PLOTREGION)  
 DASNR(ShowData)
 
@@ -221,8 +226,26 @@ print('Estimated ship speed: ',speed)
 #To validate the accuracy of the estimated speed, plot the line according to the estimated speed in the ShowDataSlice image.
 ShowDataSlice=ValidationSpeedOnRadon(speed,FILTER_Data,ReDownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Tstart,Tend,Cstart,Cend,threshold,WAVEDIRECT)
 
-Env_speed=CalculateKEnv(ShowDataSlice,channel_spacing,ReDownSampleRate)
+K_env,bias=CalculateKEnv(ShowDataSlice,channel_spacing,ReDownSampleRate)
+Env_speed=K_env*channel_spacing*fs
+
 print(Env_speed)
+#To validate the K-line and K-envelope-line in the same figure
+
+#figures in the paper
+PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT,K_env,bias)
+PlotRadonInPaper(ShowDataSlice)
+
+'''
+WLen_Scale=28
+Wbias=80
+Tbias=1.4
+h=7.298
+angle=119.8
+v=13.02
+UpperBound=50
+LowerBound=-1000
+PlotSimulInDAS(DownSampleRate,v,h,angle,15,ShowData,ST,ET,MINCHANNEL,channel_spacing,WLen_Scale,Wbias,Tbias,UpperBound,LowerBound)
 #Save setting Params to excel
 if SaveParams==1:
     df=pd.DataFrame(np.array([FILTER,DownSampleRate,MINTIME,MAXTIME,MINCHANNEL,WAVEDIRECT,threshold,Tstart,Tend,CSTART,CEND,ST_UTC8,ET_UTC8,speed]).reshape(1,-1),columns=["FILTER","DownSampleRate","MINTIME","MAXTIME","MINCHANNEL","WAVEDIRECT","threshold","Tstart","Tend","Cstart","Cend","ST_UTC8","ET_UTC8","Speed of wave along the fiber"])

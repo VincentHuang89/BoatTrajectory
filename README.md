@@ -38,7 +38,10 @@ Trajectory_filter：1）删除过个采样率多次采样的功能，调整为�
 
 AISData：调整船轨迹过光纤的速度和时间判定，从原来的默认匀速到现在的匀加速。
 
-
 20230112
 
 Trajectory_filter：按照MMSI来控制输入的数据文件的范围；根据时间控制参数Tstart和Tend来调整PlotDAS函数的时间标注。
+
+20230131:
+
+Paperfigure.py : 用以描绘文章所需的图，包括1）radon 变换前后图片的合并，2）validation of the speed of divergent wave and envelope curve图片的合并，3）simulated divergent wave in DAS，用以比较仿真与真实测量结果

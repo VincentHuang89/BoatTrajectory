@@ -66,15 +66,17 @@ def FRandAngel(fr):
 
 
 #输出特定波数a所对应的船行波
-def WavePattern(a,n):
+def WavePattern(a,n,k0=1,kmax=25,kdelta=0.01):
     X=[]
     Y=[]
     Y1=[]
-    for k in np.arange(1,40,0.01):
+    for k in np.arange(k0,kmax,kdelta):
         X.append(x(a,k,n))
         Y.append((y(a,k,n)))
         Y1.append(-(y(a,k,n)))
     return X,Y,Y1
+
+
 
 
 def rotate(angle,valuex,valuey):
@@ -199,3 +201,70 @@ def PlotWaveInDas(v,h,angle,T,A):
         plt.plot(x1,crossp1,lw=3)
         plt.plot(x2,crossp2,lw=3)
     plt.savefig('WavePatternInDas.png')
+
+def PlotSimuWaveInDas(v,h,angle,T,A,WLen_Scale,Wbias):  
+
+    UpperBound=20
+    LowerBound=-1000
+    N=FroudeNum(v,h)
+    delta_T=0.01
+    plt.figure(dpi=300,figsize=(10,10))
+    for a in range(1,A+1):
+        crossp1=[]
+        crossp2=[]
+        t_start=0
+        t_start1=0
+        for t in np.arange(0,T,delta_T):
+            dist=v*t 
+            X,Y,Y1=WavePattern(a,N,0.2,1,0.01)
+
+            RX,RY=ROTATE(angle,X,Y)
+            RX1,RY1=ROTATE(angle,X,Y1)
+            RMX,RMY=move(RX,RY,angle,dist)
+            RMX1,RMY1=move(RX1,RY1,angle,dist)
+            cp=cross(RMX,RMY)
+            if len(cp)>0:
+                if cp[0]>UpperBound or cp[0]<LowerBound: 
+                    cp=[]
+            if len(cp) and t_start==0:
+                t_start=t
+            crossp1=crossp1+cp
+
+            cp=cross(RMX1,RMY1)
+            if len(cp)>0:
+                if cp[0]>UpperBound or cp[0]<LowerBound: 
+                    cp=[]
+            if cp and t_start1==0:
+                t_start1=t
+            crossp2=crossp2+cp
+        x1=np.arange(0,len(crossp1),1)
+        x1=x1*delta_T+t_start
+        x2=np.arange(0,len(crossp2),1)
+        x2=x2*delta_T+t_start1
+
+        #Scale the wave length
+        x1=WLen_Scale*x1
+        x2=WLen_Scale*x2
+        crossp1=WLen_Scale*(np.array(crossp1)+Wbias)
+        crossp2=WLen_Scale*(np.array(crossp2)+Wbias)
+        
+        #calculate the sloop speed of divergent wave
+        #print('speed1',(crossp1[-1]-crossp1[-2])/(x1[-1]-x1[-2]))
+        #print('speed2',(crossp2[-1]-crossp2[-2])/(x2[-1]-x2[-2]))
+
+
+        
+        channel_spacing=1#4.0838
+        DownSampleRate=1#50
+
+        crossp1=crossp1/channel_spacing
+        crossp2=crossp2/channel_spacing
+        x1=x1*DownSampleRate
+        x2=x2*DownSampleRate
+
+        plt.plot(x1,crossp1,lw=3)
+        plt.plot(x2,crossp2,lw=3)
+        #print(x1,crossp1)
+    #plt.ylim([-30,30])
+    #plt.xlim([0,6])
+    plt.savefig('SimWakeInDas.png')

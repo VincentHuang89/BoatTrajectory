@@ -210,4 +210,4 @@ def CalculateKEnv(ShowDataSlice,channel_spacing,fs):
     print('Envelope!')
     plt.savefig('Envelope.png')
 
-    return K_env*channel_spacing*fs
+    return K_env,bias
