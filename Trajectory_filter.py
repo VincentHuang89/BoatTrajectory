@@ -194,7 +194,7 @@ ShowData=((ShowData>STD)|(ShowData<-STD))*ShowData
 RegionSliceX=[Tstart*60*DownSampleRate,max(-1,Tend*60*DownSampleRate),max(-1,Tend*60*DownSampleRate),Tstart*60*DownSampleRate,Tstart*60*DownSampleRate]
 RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spacing)),max(-1,int(Cend*1000/channel_spacing)),int(Cstart*1000/channel_spacing)]
 
-'''
+
 PlotDAS(ShowData,ST1,ET1,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels,PLOTANCHOR,PLOTREGION)  
 DASNR(ShowData)
 
@@ -236,7 +236,6 @@ print(Env_speed)
 PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT,K_env,bias)
 PlotRadonInPaper(ShowDataSlice)
 
-'''
 WLen_Scale=28
 Wbias=80
 Tbias=1.4

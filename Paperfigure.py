@@ -40,7 +40,7 @@ from skimage.transform import radon
 from sklearn.linear_model import LinearRegression
 from scipy import stats
 from DASFilter import bandpass_f,DataDiff,WeightMatrix,PlotDAS,DASNR,DASInterpolate,Dup_Spat_Dim,Dup_Time_Dim
-from WaveVAngel import PlotSimuWaveInDas,FroudeNum,WavePattern,ROTATE,move,cross
+from WaveVAngel import PlotSimuWaveInDas,FroudeNum,WavePattern,ROTATE,move,cross,WavePattern1
 
 
 
@@ -79,7 +79,7 @@ def PlotRadonInPaper(ShowDataSlice):
     SinSlice=slice(int(0.45*sinogram.shape[1]),int(0.55*sinogram.shape[1]),1)
     #ax2.imshow(sinogram[:,SinSlice], cmap="bwr",aspect='auto',origin='lower')
     ax3.imshow(sinogram, cmap="bwr",extent=(0.0-dx, 180.0 + dx, -dy, sinogram.shape[0] + dy),aspect='auto',origin='lower')
-    plt.savefig('Radon_transform.png')
+    plt.savefig('Radon_transform.png' ,bbox_inches='tight')
     return sinogram
 
 
@@ -109,16 +109,16 @@ def PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT
     Channel=np.array(Channel).reshape(-1,1)
 
     plt.figure(dpi=300)
-    plt.plot(x,k*x+1.5*b,lw=3.5,color='g',label='Calculated divergent wave crest')
+    plt.plot(x,k*x+1.5*b,lw=2,color='lime',label='Calculated divergent wave crest')
     #plt.text(0,0,"U =%.2f m/s"%speed,size=15)
     plt.ylim((0,ShowDataSlice.shape[0]))
 
     plt.imshow(ShowDataSlice, aspect='auto',cmap="bwr",origin='lower',vmin=-3,vmax=3)
-    plt.plot(Time,Channel,lw=3.5,linestyle='--',label='Envelope Curve')
-    plt.plot(Time,list(bias+K_env*np.array(Time)),lw=3.5,label='Linear regression of Envelope Curve')
+    plt.plot(Time,Channel,lw=2,linestyle='--',color='b',label='Envelope Curve')
+    plt.plot(Time,list(bias+K_env*np.array(Time)),lw=2,color='gold',label='Linear regression of Envelope Curve')
     plt.legend()
     print('Envelope and wave crest!')
-    plt.savefig('Envelope_Crest.png')
+    plt.savefig('Envelope_Crest.png' ,bbox_inches='tight')
 
 
 def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_spacing,WLen_Scale,Wbias,Tbias,UpperBound,LowerBound):
@@ -140,7 +140,10 @@ def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_
         t_start1=0
         for t in np.arange(0,T,delta_T):
             dist=v*t #移动的距离 dist=v*t,除以矫正系数
-            X,Y,Y1=WavePattern(a,N,0.2,1.5,0.01)
+            X,Y,Y1,ALPHA=WavePattern1(a,N,0.2,1.5,0.01)
+            alpha=max(ALPHA)
+            Attenuation0 = sin(radians(angle - (alpha)))**2   #乘以一定系数
+            Attenuation1 = sin(radians(180-angle - (alpha)))**2
             RX,RY=ROTATE(angle,X,Y)
             RX1,RY1=ROTATE(angle,X,Y1)
             RMX,RMY=move(RX,RY,angle,dist)
@@ -177,15 +180,15 @@ def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_
         crossp2=crossp2/channel_spacing
         x1=x1*DownSampleRate
         x2=x2*DownSampleRate
-        plt.plot(x1,crossp1,lw=1.5,linestyle='--',color='lime')
-        plt.plot(x2,crossp2,lw=1.5,linestyle='--',color='lime')
+        plt.plot(x1,crossp1,lw=2.5,linestyle='--',alpha=Attenuation0,color='lime')
+        plt.plot(x2,crossp2,lw=2.5,linestyle='--',alpha=Attenuation1,color='lime')
 
     print(np.transpose(ShowData).shape)
     plt.imshow(np.transpose(ShowData), cmap="bwr", aspect='auto',origin='lower',vmin=-3,vmax=3) # cmap=''bwr,, 
     #计算坐标轴的刻度大小,合计10个时间戳(计算有问题，需要考虑数据的实际距离以及截断)
     #根据MINCHANNEL和MAXCHANNEL重置Y轴
     plt.colorbar()
-    TimeTicks=20
+    TimeTicks=10
     TI=(ET-ST)/TimeTicks
     xlabel=np.linspace(0,ShowData.shape[0],TimeTicks+1)
     plt.xticks(xlabel,pd.date_range(ST.strftime("%Y%m%d %H%M"),ET.strftime("%Y%m%d %H%M"),freq=TI).strftime('%H:%M:%S'),rotation = 60,size=15)
@@ -194,4 +197,4 @@ def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_
     plt.yticks(ylabel,np.round((ylabel)*channel_spacing/1000+MINCHANNEL,2),size=15)
 
     plt.ylabel("Distance(Km)",fontsize=15)
-    plt.savefig('PlotSimulInDAS.png')
+    plt.savefig('PlotSimulInDAS.png',bbox_inches='tight')

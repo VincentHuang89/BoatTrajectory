@@ -44,4 +44,8 @@ Trajectory_filter：按照MMSI来控制输入的数据文件的范围；根据�
 
 20230131:
 
-Paperfigure.py : 用以描绘文章所需的图，包括1）radon 变换前后图片的合并，2）validation of the speed of divergent wave and envelope curve图片的合并，3）simulated divergent wave in DAS，用以比较仿真与真实测量结果
+Paperfigure.py : 用以描绘文章所需的图，包括1）radon 变换前后图片的合并，2）validation of the speed of divergent wave and envelope curve图片的合并，3）simulated divergent wave in DAS，用以比较仿真与真实测量结果.
+
+20230213:
+
+Paperfigure.py: 1)增加方向敏感性对DAS域上散波强度的影响，参考论文[1]	P. G. Hubbard, J. P. Vantassel, B. R. Cox, J. W. Rector, M. B. S. Yust, and K. Soga, "Quantifying the Surface Strain Field Induced by Active Sources with Distributed Acoustic Sensing: Theory and Practice," Sensors (Basel, Switzerland), vol. 22, 2022.
