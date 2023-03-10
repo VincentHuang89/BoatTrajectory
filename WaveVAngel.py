@@ -77,11 +77,25 @@ def WavePattern(a,n,k0=1,kmax=25,kdelta=0.01):
     return X,Y,Y1
 
 
+def WavePattern1(a,n,k0=1,kmax=25,kdelta=0.01):
+    X=[]
+    Y=[]
+    Y1=[]
+    for k in np.arange(k0,kmax,kdelta):
+        X.append(x(a,k,n))
+        Y.append((y(a,k,n)))
+        Y1.append(-(y(a,k,n)))
+    #计算波线的角度
+    alpha=[degrees(atan((Y1[1]-Y1[0])/(X[1]-X[0])))]
+    for i in range(1,len(X)):
+
+        alpha.append(degrees(atan((Y1[i]-Y1[i-1])/(X[i]-X[i-1]))))
+    return X,Y,Y1,alpha
 
 
 def rotate(angle,valuex,valuey):
-    rotatex = math.cos(angle)*valuex -math.sin(angle)*valuey
-    rotatey = math.cos(angle)*valuey + math.sin(angle)* valuex
+    rotatex = math.cos(radians(angle))*valuex -math.sin(radians(angle))*valuey
+    rotatey = math.cos(radians(angle))*valuey + math.sin(radians(angle))* valuex
     return rotatex,rotatey
 def getLen(x1,y1,x2,y2):
     diff_x = (x1-x2)**2
@@ -93,6 +107,7 @@ def getLen(x1,y1,x2,y2):
 def ROTATE(angle,X,Y):
     RX=[]
     RY=[]
+    angle=angle-90 #重新映射到光纤的角度
     for i in range(0,len(X)):
         rotatex,rotatey=rotate(angle,X[i],Y[i])
         RX.append(rotatex)
@@ -100,8 +115,9 @@ def ROTATE(angle,X,Y):
     return RX,RY
 
 def move(X,Y,angle,dist):
-    distX=dist*cos(angle)
-    distY=dist*sin(angle)
+    angle=angle-90 #重新映射到光纤的角度
+    distX=dist*cos(radians(angle))
+    distY=dist*sin(radians(angle))
     X_m=np.array(X)-distX
     Y_m=np.array(Y)-distY
     return X_m,Y_m
@@ -113,10 +129,15 @@ def PlotBoatWave(v,h,angle,dist):
     #plt.xlim(-8,8)
     #plt.ylim(-8,8)
     trajx=np.arange(-10,10,0.1)
-    trajy=tan(angle)*trajx
+    if angle==90:
+        trajy=np.zeros(len(trajx))
+    else:
+        trajy=tan(radians(angle))*trajx
     plt.plot(trajx,trajy,linestyle='--')
 
     plt.vlines(x=0,ymin=-10,ymax=30,colors='black',linestyle='--')
+    plt.xlim([-20,20])
+    plt.ylim([-20,20])
     plt.legend(["Sailing line","Optical fiber"])
     for a in range(1,A+1):
         X,Y,Y1=WavePattern(a,N)
@@ -133,6 +154,45 @@ def PlotBoatWave(v,h,angle,dist):
         lines=plt.plot(RMX,RMY,lw=3)
         clr=lines[0].get_color()
         plt.plot(RMX1,RMY1,color=clr,lw=3)
+
+
+def PlotShipWakePattern(v,h,A,angle,dist):
+    '''
+        Depict the ship wake
+
+    '''
+    N=FroudeNum(v,h)
+
+    plt.figure(dpi=300,figsize=(10,10))
+
+    plt.vlines(x=0,ymin=-10,ymax=30,colors='black',linestyle='--')
+    plt.xlim([-20,20])
+    plt.ylim([-20,20])
+    plt.legend(["Sailing line","Optical fiber"])
+    for a in range(1,A+1):
+        X,Y,Y1=WavePattern(a,N)
+        lines=plt.plot((X),(Y),lw=3)
+        clr=lines[0].get_color()
+        plt.plot((X),(Y1),color=clr,lw=3)
+
+
+    plt.figure(dpi=300,figsize=(10,10))
+    for a in range(1,A+1):
+        X,Y,Y1=WavePattern(a,N)
+
+        RX,RY=ROTATE(angle,X,Y)
+        RX1,RY1=ROTATE(angle,X,Y1)
+
+        RMX,RMY=move(RX,RY,angle,dist)
+        RMX1,RMY1=move(RX1,RY1,angle,dist)
+
+        lines=plt.plot((RX),(RY),lw=3)
+        clr=lines[0].get_color()
+        plt.plot((RX1),(RY1),color=clr,lw=3)
+        lines=plt.plot(RMX,RMY,lw=3)
+        clr=lines[0].get_color()
+        plt.plot(RMX1,RMY1,color=clr,lw=3)
+
 
 
 #判断与x=0的交点

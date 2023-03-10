@@ -45,3 +45,9 @@ Trajectory_filter：按照MMSI来控制输入的数据文件的范围；根据�
 20230131:
 
 Paperfigure.py : 用以描绘文章所需的图，包括1）radon 变换前后图片的合并，2）validation of the speed of divergent wave and envelope curve图片的合并，3）simulated divergent wave in DAS，用以比较仿真与真实测量结果
+
+20230311:
+
+WaveVAngel.py: 修改了ROTATE与move函数中对angle，令angle=angle-90，因为wavepattern函数所产生的船行波的方向与光纤垂直。
+
+Trajectory_filter :修改了PlotSimulInDAS函数中的时间标注参数，ST变为ST1等

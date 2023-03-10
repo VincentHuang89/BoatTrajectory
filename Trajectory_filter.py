@@ -48,7 +48,7 @@ FILTER=1
 DownSampleRate = 50   #输入的采样数据为1秒1000个点，这里设置每秒采样的点数
 # Showdata params
 MINTIME=0
-MAXTIME=3
+MAXTIME=4
 MINCHANNEL=7
 MAXCHANNEL=11  #Km
 #波线方向（左下到右上：0 （图像域的上半部分，deg：0-90），左上到右下：1，deg：90-180，展示所有：2）
@@ -239,13 +239,14 @@ PlotRadonInPaper(ShowDataSlice)
 '''
 WLen_Scale=28
 Wbias=80
-Tbias=1.4
-h=7.298
-angle=119.8
-v=13.02
+Tbias=1.3
+h=7.246
+angle=118.8
+#angle=angle-90  #重新映射到光纤的角度
+v=13.78
 UpperBound=50
 LowerBound=-1000
-PlotSimulInDAS(DownSampleRate,v,h,angle,15,ShowData,ST,ET,MINCHANNEL,channel_spacing,WLen_Scale,Wbias,Tbias,UpperBound,LowerBound)
+PlotSimulInDAS(DownSampleRate,v,h,angle,25,ShowData,ST1,ET1,MINCHANNEL,channel_spacing,WLen_Scale,Wbias,Tbias,UpperBound,LowerBound)
 #Save setting Params to excel
 if SaveParams==1:
     df=pd.DataFrame(np.array([FILTER,DownSampleRate,MINTIME,MAXTIME,MINCHANNEL,WAVEDIRECT,threshold,Tstart,Tend,CSTART,CEND,ST_UTC8,ET_UTC8,speed]).reshape(1,-1),columns=["FILTER","DownSampleRate","MINTIME","MAXTIME","MINCHANNEL","WAVEDIRECT","threshold","Tstart","Tend","Cstart","Cend","ST_UTC8","ET_UTC8","Speed of wave along the fiber"])
