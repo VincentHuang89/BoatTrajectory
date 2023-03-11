@@ -98,7 +98,8 @@ for N in np.arange(1.01,3,0.01):
     k=(Y1[0]-Y1[1])/(X[0]-X[1])
     Alpha.append(degrees(atan(k)))
 #计算包络线的夹角r
-    k1=(0-Y1[5])/(0-X[5])
+    #k1=(0-Y1[5])/(0-X[5])   #wavenumber=1.5 
+    k1=(0-Y1[5])/(0-X[5])   #wavenumber=1.2 
     R.append(degrees(atan(k1)))
 
 Res1=pd.DataFrame()
