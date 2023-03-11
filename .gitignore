@@ -8,7 +8,6 @@
 /BoatSpeedAngel0930.py
 /BoatSpeedAngel1002.py
 /BoatSpeedAngel1021.py
-/DASFilter.py
 /Data
 /DataforAIS
 /FiberBoatMessage.xlsx
@@ -20,7 +19,6 @@
 /SpeedFiltered.png
 /TimeAlign.py
 /TimeAlign0720.py
-/Traj2DAS.py
 /Trajectory0818.py
 /Trajectory0823.py
 /TrajectoryV1.py
