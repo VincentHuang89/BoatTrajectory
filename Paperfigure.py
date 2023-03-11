@@ -142,7 +142,7 @@ def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_
         t_start1=0
         for t in np.arange(0,T,delta_T):
             dist=v*t #移动的距离 dist=v*t,除以矫正系数
-            X,Y,Y1,ALPHA=WavePattern1(a,N,0.1,1.5,0.01)
+            X,Y,Y1,ALPHA=WavePattern1(a,N,0.2,1.5,0.01)
             alpha=max(ALPHA)
             Attenuation0 = sin(radians(angle - (alpha)))**2   #乘以一定系数
             Attenuation1 = sin(radians(180-angle - (alpha)))**2
