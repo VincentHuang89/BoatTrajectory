@@ -95,7 +95,7 @@ def SpeedOnRadon(sinogram,resolution,channel_spacing,fs,scaling,WAVEDIRECT):
     df=pd.DataFrame(np.transpose(np.array([sino,deg_y_list])),columns=['sino','deg'])
     df['sino']=abs(df['sino'])
     df.sort_values(by='sino',ascending=False,inplace=True)
-    deg_y_list=df['deg'][0:5]
+    deg_y_list=df['deg'][0:9]
     #print(np.mean(deg_y_list),np.median(deg_y_list))
     if tan(radians(np.mean(deg_y_list)))==0:
         s1=NaN

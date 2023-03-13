@@ -142,7 +142,8 @@ def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_
         t_start1=0
         for t in np.arange(0,T,delta_T):
             dist=v*t #移动的距离 dist=v*t,除以矫正系数
-            X,Y,Y1,ALPHA=WavePattern1(a,N,0.2,1.5,0.01)
+            X,Y,Y1,ALPHA=WavePattern1(a,N,0.1,1.5,0.01)
+            Y1=list(np.array(Y1)-0.4)   #调整单边散波波形的位置
             alpha=max(ALPHA)
             Attenuation0 = sin(radians(angle - (alpha)))**2   #乘以一定系数
             Attenuation1 = sin(radians(180-angle - (alpha)))**2
@@ -182,18 +183,18 @@ def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_
         crossp2=crossp2/channel_spacing
         x1=x1*DownSampleRate
         x2=x2*DownSampleRate
-        plt.plot(x1,crossp1,lw=1,linestyle='--',alpha=Attenuation0,color='lime')
-        plt.plot(x2,crossp2,lw=1,linestyle='--',alpha=Attenuation1,color='lime')
+        plt.plot(x1,crossp1,lw=2,linestyle='--',alpha=Attenuation0,color='lime')
+        plt.plot(x2,crossp2,lw=2,linestyle='--',alpha=Attenuation1,color='lime')
 
     print(np.transpose(ShowData).shape)
     plt.imshow(np.transpose(ShowData), cmap="bwr", aspect='auto',origin='lower',vmin=-3,vmax=3) # cmap=''bwr,, 
     #计算坐标轴的刻度大小,合计10个时间戳(计算有问题，需要考虑数据的实际距离以及截断)
     #根据MINCHANNEL和MAXCHANNEL重置Y轴
     plt.colorbar()
-    TimeTicks=10
+    TimeTicks=5
     TI=(ET-ST)/TimeTicks
     xlabel=np.linspace(0,ShowData.shape[0],TimeTicks+1)
-    plt.xticks(xlabel,pd.date_range(ST.strftime("%Y%m%d %H%M"),ET.strftime("%Y%m%d %H%M"),freq=TI).strftime('%H:%M:%S'),rotation = 60,size=15)
+    plt.xticks(xlabel,pd.date_range(ST.strftime("%Y%m%d %H%M"),ET.strftime("%Y%m%d %H%M"),periods=TimeTicks+1).strftime('%H:%M:%S'),rotation = 60,size=15)
     ylabel=np.linspace(0,ShowData.shape[1],10)
     plt.xlabel("Time",fontsize=15)
     plt.yticks(ylabel,np.round((ylabel)*channel_spacing/1000+MINCHANNEL,2),size=15)

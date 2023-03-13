@@ -74,8 +74,6 @@ def WavePattern(a,n,k0=1,kmax=25,kdelta=0.01):
         X.append(x(a,k,n))
         Y.append((y(a,k,n)))
         Y1.append(-(y(a,k,n)))
-    #计算波线的角度
-
     return X,Y,Y1
 
 
@@ -98,8 +96,6 @@ def WavePattern1(a,n,k0=1,kmax=25,kdelta=0.01):
 def rotate(angle,valuex,valuey):
     rotatex = math.cos(radians(angle))*valuex -math.sin(radians(angle))*valuey
     rotatey = math.cos(radians(angle))*valuey + math.sin(radians(angle))* valuex
-    rotatex = math.cos(radians(angle))*valuex -math.sin(radians(angle))*valuey
-    rotatey = math.cos(radians(angle))*valuey + math.sin(radians(angle))* valuex
     return rotatex,rotatey
 def getLen(x1,y1,x2,y2):
     diff_x = (x1-x2)**2
@@ -120,8 +116,8 @@ def ROTATE(angle,X,Y):
 
 def move(X,Y,angle,dist):
     angle=angle-90 #重新映射到光纤的角度
-    distX=dist*cos(radians(radians(angle)))
-    distY=dist*sin(radians(radians(angle)))
+    distX=dist*cos(radians(angle))
+    distY=dist*sin(radians(angle))
     X_m=np.array(X)-distX
     Y_m=np.array(Y)-distY
     return X_m,Y_m
@@ -136,16 +132,15 @@ def PlotBoatWave(v,h,angle,dist):
     if angle==90:
         trajy=np.zeros(len(trajx))
     else:
-        trajy=tan(radians(radians(angle)))*trajx
+        trajy=tan(radians(angle))*trajx
     plt.plot(trajx,trajy,linestyle='--')
-    plt.xlim((-40,40))
-    plt.ylim((-40,40))
+
     plt.vlines(x=0,ymin=-10,ymax=30,colors='black',linestyle='--')
     plt.xlim([-20,20])
     plt.ylim([-20,20])
     plt.legend(["Sailing line","Optical fiber"])
     for a in range(1,A+1):
-        X,Y,Y1=WavePattern(a,N,0.8,20)
+        X,Y,Y1=WavePattern(a,N)
 
         RX,RY=ROTATE(angle,X,Y)
         RX1,RY1=ROTATE(angle,X,Y1)
@@ -242,14 +237,14 @@ def PlotWaveInDAS(crossp):
 #重构plotWaveInDAS，以a为外循环，dist为内循环
 def PlotWaveInDas(v,h,angle,T,A):  
     N=FroudeNum(v,h)
-    delta_T=0.1
+    delta_T=0.01
     plt.figure(dpi=300,figsize=(10,10))
     for a in range(1,A+1):
         crossp1=[]
         crossp2=[]
         for t in np.arange(0,T,delta_T):
             dist=v*t #移动的距离 dist=v*t,除以矫正系数
-            X,Y,Y1=WavePattern(a,N,1,1.5,0.01)
+            X,Y,Y1=WavePattern(a,N)
             RX,RY=ROTATE(angle,X,Y)
             RX1,RY1=ROTATE(angle,X,Y1)
             RMX,RMY=move(RX,RY,angle,dist)
@@ -267,13 +262,13 @@ def PlotWaveInDas(v,h,angle,T,A):
         plt.plot(x2,crossp2,lw=3)
     plt.savefig('WavePatternInDas.png')
 
-def PlotSimuWaveInDas(v,h,phy,T,A,WLen_Scale,Wbias,kmin,kmax):  
+def PlotSimuWaveInDas(v,h,angle,T,A,WLen_Scale,Wbias):  
 
-    UpperBound=1000
+    UpperBound=20
     LowerBound=-1000
     N=FroudeNum(v,h)
     delta_T=0.01
-    plt.figure(dpi=300,figsize=(6,6))
+    plt.figure(dpi=300,figsize=(10,10))
     for a in range(1,A+1):
         crossp1=[]
         crossp2=[]
@@ -281,14 +276,12 @@ def PlotSimuWaveInDas(v,h,phy,T,A,WLen_Scale,Wbias,kmin,kmax):
         t_start1=0
         for t in np.arange(0,T,delta_T):
             dist=v*t 
-            X,Y,Y1,ALPHA=WavePattern1(a,N,kmin,kmax,0.1)
-            alpha=max(ALPHA)
-            Attenuation0 = sin(radians(phy - (alpha)))**2
-            Attenuation1 = sin(radians(180-phy - (alpha)))**2
-            RX,RY=ROTATE(phy,X,Y)
-            RX1,RY1=ROTATE(phy,X,Y1)
-            RMX,RMY=move(RX,RY,phy,dist)
-            RMX1,RMY1=move(RX1,RY1,phy,dist)
+            X,Y,Y1=WavePattern(a,N,0.2,1,0.01)
+
+            RX,RY=ROTATE(angle,X,Y)
+            RX1,RY1=ROTATE(angle,X,Y1)
+            RMX,RMY=move(RX,RY,angle,dist)
+            RMX1,RMY1=move(RX1,RY1,angle,dist)
             cp=cross(RMX,RMY)
             if len(cp)>0:
                 if cp[0]>UpperBound or cp[0]<LowerBound: 
@@ -329,12 +322,9 @@ def PlotSimuWaveInDas(v,h,phy,T,A,WLen_Scale,Wbias,kmin,kmax):
         x1=x1*DownSampleRate
         x2=x2*DownSampleRate
 
-        plt.plot(x1,crossp1,alpha=Attenuation0,lw=1)
-        plt.plot(x2,crossp2,alpha=Attenuation1,lw=1)
+        plt.plot(x1,crossp1,lw=3)
+        plt.plot(x2,crossp2,lw=3)
         #print(x1,crossp1)
     #plt.ylim([-30,30])
     #plt.xlim([0,6])
-
-    plt.xlabel('Time')
-    plt.ylabel('Channel')
-    plt.savefig('SimWakeInDas.png',bbox_inches='tight')
+    plt.savefig('SimWakeInDas.png')

@@ -47,20 +47,20 @@ SaveParams=0
 FILTER=1
 DownSampleRate = 50   #输入的采样数据为1秒1000个点，这里设置每秒采样的点数
 # Showdata params
-MINTIME=0
-MAXTIME=4
-MINCHANNEL=7
-MAXCHANNEL=11  #Km
+MINTIME=0.5
+MAXTIME=2.5
+MINCHANNEL=8
+MAXCHANNEL=10.5  #Km
 #波线方向（左下到右上：0 （图像域的上半部分，deg：0-90），左上到右下：1，deg：90-180，展示所有：2）
 WAVEDIRECT=1
 
 # Z-score and threshold filter
 threshold=1.5
 #radon transfromation params
-Tstart =1.5
-Tend =1.8
-Cstart =8.6
-Cend= 9.1
+Tstart =2
+Tend =3
+Cstart =8.2
+Cend= 9
 CSTART=Cstart
 CEND=Cend
 Cstart=max(Cstart-MINCHANNEL,0)
@@ -75,8 +75,8 @@ PLOTREGION=1
 DENOISE_RADON=1
 
 #Enhance the resolution of DataSlice in channel and time dimension or not
-SPACE_EN=1
-TIME_EN=1
+SPACE_EN=0
+TIME_EN=0
 #---------------------------------------------------
 
 start = time.time()
@@ -195,6 +195,9 @@ RegionSliceX=[Tstart*60*DownSampleRate,max(-1,Tend*60*DownSampleRate),max(-1,Ten
 RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spacing)),max(-1,int(Cend*1000/channel_spacing)),int(Cstart*1000/channel_spacing)]
 
 
+
+
+'''
 PlotDAS(ShowData,ST1,ET1,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels,PLOTANCHOR,PLOTREGION)  
 DASNR(ShowData)
 
@@ -223,26 +226,28 @@ s_mean = RES['s_mean']
 speed=np.mean(s_mean)
 print('Estimated ship speed: ',speed)
 
+
 #To validate the accuracy of the estimated speed, plot the line according to the estimated speed in the ShowDataSlice image.
 ShowDataSlice=ValidationSpeedOnRadon(speed,FILTER_Data,ReDownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Tstart,Tend,Cstart,Cend,threshold,WAVEDIRECT)
 
 K_env,bias=CalculateKEnv(ShowDataSlice,channel_spacing,ReDownSampleRate)
 Env_speed=K_env*channel_spacing*fs
 
-print(Env_speed)
+print('包络线速度',Env_speed)
 #To validate the K-line and K-envelope-line in the same figure
 
 #figures in the paper
 PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT,K_env,bias)
 PlotRadonInPaper(ShowDataSlice)
+'''
 
-WLen_Scale=28
-Wbias=80
-Tbias=1.3
+WLen_Scale=25
+Wbias=50
+Tbias=0.25
 h=7.246
 angle=118.8
 #angle=angle-90  #重新映射到光纤的角度
-v=13.78
+v=13.69
 UpperBound=50
 LowerBound=-1000
 PlotSimulInDAS(DownSampleRate,v,h,angle,25,ShowData,ST1,ET1,MINCHANNEL,channel_spacing,WLen_Scale,Wbias,Tbias,UpperBound,LowerBound)
