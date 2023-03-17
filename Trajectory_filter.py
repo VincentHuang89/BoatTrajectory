@@ -48,14 +48,14 @@ FILTER=1
 DownSampleRate = 50   #输入的采样数据为1秒1000个点，这里设置每秒采样的点数
 # Showdata params
 MINTIME=0.5
-MAXTIME=2.5
-MINCHANNEL=8
-MAXCHANNEL=10.5  #Km
+MAXTIME=2
+MINCHANNEL=8.5
+MAXCHANNEL=9.7 #Km
 #波线方向（左下到右上：0 （图像域的上半部分，deg：0-90），左上到右下：1，deg：90-180，展示所有：2）
 WAVEDIRECT=1
 
 # Z-score and threshold filter
-threshold=1.5
+threshold=1.3
 #radon transfromation params
 Tstart =2
 Tend =3
@@ -125,7 +125,7 @@ if MAXTIME==-1:
     ET1=ET
 else:
     ET1=ST+timedelta(minutes=MAXTIME)
-
+print(ST1,ET1)
 
 
 #%%Read DAS data files
@@ -241,15 +241,15 @@ PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT,K_e
 PlotRadonInPaper(ShowDataSlice)
 '''
 
-WLen_Scale=25
-Wbias=50
-Tbias=0.25
+WLen_Scale=25   #20
+Wbias=30  #63
+Tbias=0.32  #0.3
 h=7.246
 angle=118.8
 #angle=angle-90  #重新映射到光纤的角度
 v=13.69
 UpperBound=50
-LowerBound=-1000
+LowerBound=-10000
 PlotSimulInDAS(DownSampleRate,v,h,angle,25,ShowData,ST1,ET1,MINCHANNEL,channel_spacing,WLen_Scale,Wbias,Tbias,UpperBound,LowerBound)
 #Save setting Params to excel
 if SaveParams==1:
