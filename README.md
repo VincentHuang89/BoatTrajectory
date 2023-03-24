@@ -50,4 +50,10 @@ Paperfigure.py : 用以描绘文章所需的图，包括1）radon 变换前后�
 
 WaveVAngel.py: 修改了ROTATE与move函数中对angle，令angle=angle-90，因为wavepattern函数所产生的船行波的方向与光纤垂直。
 
-Trajectory_filter :修改了PlotSimulInDAS函数中的时间标注参数，ST变为ST1等
+Trajectory_filter :修改了PlotSimulInDAS函数中的时间标注参数，ST变为ST1等.
+
+20230324:
+
+Paperfigure.py: 重新调整了PlotSimInDAS.png的画图逻辑，Tbias和Wbias依据船行波出现的时刻和位置来自动生成，不需要手动调整，同时调整了Simulated Wake的生成逻辑，仅依靠Wbias来调整尺寸。
+
+Trajectory_filter：增加船行波出现时刻和位置的计算逻辑。

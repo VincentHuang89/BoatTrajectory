@@ -109,6 +109,12 @@ h=7
 StartTime=["24/07/22 09:54","24/07/22 10:02","24/07/22 21:09"]
 EndTime=["24/07/22 10:03","24/07/22 10:03","24/07/22 21:11"]
 
+#锚定船行波出现的时间和位置
+OccurTime=["24/07/22 09:54:35"]
+OccurDist=[9.25]
+OCCURTIME=datetime.datetime.strptime(OccurTime[SHIP], "%d/%m/%y %H:%M:%S")
+OCCURDIST=OccurDist[SHIP]
+
 ST_UTC8=datetime.datetime.strptime(StartTime[SHIP], "%d/%m/%y %H:%M")
 ET_UTC8=datetime.datetime.strptime(EndTime[SHIP], "%d/%m/%y %H:%M")
 ST_UTC0=ST_UTC8-timedelta(hours=8)
@@ -120,7 +126,7 @@ ST=ST+timedelta(hours=8)
 ET=ET+timedelta(hours=8)
 print('Minutes of the DAS data is ',len(FileSet))
 
-ST1=ST+timedelta(minutes=MINTIME)
+ST1=ST+timedelta(minutes=MINTIME)  #在ST-ET区间中按照MINTIME和MAXTIME重新选择数据
 if MAXTIME==-1:
     ET1=ET
 else:
@@ -134,7 +140,6 @@ if Tend==-1:
 else:
     ETW=ST+timedelta(minutes=Tend)
 print(STW,ETW)
-
 
 #%%Read DAS data files
 for i in range(0,len(FileSet)):
@@ -249,9 +254,9 @@ PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT,K_e
 PlotRadonInPaper(ShowDataSlice,channel_spacing,STW,ETW,CSTART)
 '''
 
-WLen_Scale=25   #20
-Wbias=30  #63
-Tbias=0.32  #0.3
+WLen_Scale=40   #20
+Wbias=OCCURDIST-MINCHANNEL
+Tbias=(OCCURTIME-ST1)/timedelta(seconds=1)
 h=7.246
 angle=118.8
 #angle=angle-90  #重新映射到光纤的角度

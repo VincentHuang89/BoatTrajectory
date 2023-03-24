@@ -198,19 +198,18 @@ def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_
         #print("散波速度",(crossp1[-1]-crossp1[-2])/(x1[-1]-x1[-2]))
 
         #Scale the wave length because the WavePattern function returns the dimensionless wake pattern
-        x1=x1+Tbias
-        x2=x2+Tbias
+
 
         x1=WLen_Scale*x1
         x2=WLen_Scale*x2
-        crossp1=WLen_Scale*(np.array(crossp1)+Wbias)
-        crossp2=WLen_Scale*(np.array(crossp2)+Wbias)
+        crossp1=WLen_Scale*(np.array(crossp1))
+        crossp2=WLen_Scale*(np.array(crossp2))
 
         #Channel sampling and sampling of the simulated wave crest
-        crossp1=crossp1/channel_spacing
-        crossp2=crossp2/channel_spacing
-        x1=x1*DownSampleRate
-        x2=x2*DownSampleRate
+        crossp1=crossp1/channel_spacing+(Wbias*1000)/channel_spacing
+        crossp2=crossp2/channel_spacing+(Wbias*1000)/channel_spacing
+        x1=(x1+Tbias)*DownSampleRate
+        x2=(x2+Tbias)*DownSampleRate
         plt.plot(x1,crossp1,lw=2,linestyle='--',alpha=Attenuation0,color='lime')
         plt.plot(x2,crossp2,lw=2,linestyle='--',alpha=Attenuation1,color='lime')
 
@@ -228,12 +227,25 @@ def PlotSimulInDAS(DownSampleRate,v,h,angle,A,ShowData,ST,ET,MINCHANNEL,channel_
     plt.ylabel("Distance(Km)",fontsize=15)
     plt.savefig('PlotSimulInDAS.png',bbox_inches='tight')
     plt.savefig('/home/huangwj/DAS/BoatTrajectory/Paperfig/PlotSimulInDAS.pdf',bbox_inches='tight')
+
+
     #画出仿真船行波全局图
-    plt.figure(dpi=300,figsize=(10,10))
+    plt.figure(dpi=500,figsize=(10,6))
     delta_T=0.1
     for a in range(1,A+1):
         x1,x2,crossp1,crossp2,Attenuation0,Attenuation1=PLotSimWaveCrest(UpperBound,LowerBound,angle,v,T,N,a,delta_T)
+
+        x1=WLen_Scale*x1
+        x2=WLen_Scale*x2
+        crossp1=WLen_Scale*(np.array(crossp1))
+        crossp2=WLen_Scale*(np.array(crossp2))
+
+        #Channel sampling and sampling of the simulated wave crest
+        crossp1=crossp1/channel_spacing+(Wbias*1000)/channel_spacing
+        crossp2=crossp2/channel_spacing+(Wbias*1000)/channel_spacing
+        x1=(x1+Tbias)*DownSampleRate
+        x2=(x2+Tbias)*DownSampleRate
         plt.plot(x1,crossp1,lw=2,linestyle='--',alpha=Attenuation0,color='lime')
         plt.plot(x2,crossp2,lw=2,linestyle='--',alpha=Attenuation1,color='lime')
     plt.savefig('PlotSimuWave.png',bbox_inches='tight')
-    plt.savefig('/home/huangwj/DAS/BoatTrajectory/Paperfig/PlotSimuWave.pdf',bbox_inches='tight')
+
