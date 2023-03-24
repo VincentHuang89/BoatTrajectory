@@ -204,6 +204,7 @@ def CalculateKEnv(ShowDataSlice,channel_spacing,fs):
     bias=reg.intercept_[0]
     plt.figure(dpi=300)
     plt.imshow(ShowDataSlice, aspect='auto',cmap="bwr",origin='lower',vmin=-3,vmax=3)
+    plt.colorbar()
     plt.plot(Time,Channel,lw=2,linestyle='--',label='Envelope Curve')
     plt.plot(Time,list(bias+K_env*np.array(Time)),lw=2,label='Linear regression of Envelope Curve')
     plt.legend()

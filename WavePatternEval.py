@@ -42,7 +42,7 @@ def y(a,k,N):   #公式(19)
 def x(a,k,N):   #公式(20)
     return a*(k-F(k,N)*F1(k,N))/(k*(F(k,N)-k*F1(k,N)))
 
-N=1.2
+N=1.001
 
 plt.figure(dpi=300,figsize=(12, 8))
 for a in range(1,5):
@@ -99,7 +99,7 @@ for N in np.arange(1+N_delta,3,N_delta):
     k=(Y1[0]-Y1[1])/(X[0]-X[1])
     Alpha.append(degrees(atan(k)))
 #计算包络线的夹角r
-    k1=(0-Y1[8])/(0-X[8])   #wavenumber=1.8 
+    k1=(0-Y1[5])/(0-X[5])   #wavenumber=1.8 
     #k1=(0-Y1[5])/(0-X[5])   #wavenumber=1.5 
     R.append(degrees(atan(k1)))
 
@@ -120,10 +120,12 @@ plt.plot(X,Y,label=r'$\alpha$')
 plt.plot(X,Y1,label=r'$\gamma$')
 plt.legend()
 
-
-plt.figure(dpi=300)
-plt.xlabel(r'$\alpha$')
-plt.ylabel(r'$\gamma$')
-plt.plot(Y,Y1)
+#%%
+fig=plt.figure(dpi=300,figsize=(8,4.5))
+ax=fig.add_subplot(111)
+ax.set_xlabel(r'$\alpha$',fontsize=13)
+ax.set_ylabel(r'$\gamma$',fontsize=13,rotation=0)
+ax.plot(Y,Y1)
+plt.savefig('/home/huangwj/DAS/BoatTrajectory/Paperfig/a_r.pdf',bbox_inches='tight')
 
 #%% 分析随着N变化，alpha和r 角度的变化（r角度重新分析）

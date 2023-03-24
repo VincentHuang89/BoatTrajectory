@@ -48,8 +48,8 @@ def f1(fai,alpha,k1,k2):
 
 res=pd.DataFrame(columns=['fai','alpha','err1','speed']) #speed 指代散波的前进速度
 
-for fai in tqdm(np.arange(1,180,0.2)):
-    for a in np.arange(1,60,0.2):
+for fai in tqdm(np.arange(1,180,0.5)):
+    for a in np.arange(1,60,0.5):
         if k1==0:
             #if a<=90:
             res.loc[len(res.index)] = (fai,a,abs(a-fai),k2*sin(radians(fai+a)))
@@ -134,6 +134,24 @@ res1=res1[(res1['ShipSpeed_env']<20)]
 
 
 res1.to_excel('船只轨迹计算结果'+'.xlsx')
+#%%
+#画出解空间
+Speed=list(res1['ShipSpeed_env'])
+Angel=list(res1['fai'])
+Depth=list(res1['Height'])
 
-#%%考虑Fr少于1的情况
+fig=plt.figure(dpi=500,figsize=(10,8))
+ax1=fig.add_subplot(111)
+ax1.plot(Depth,Speed,'ro-',label='ship speed')
+ax1.set_xlabel('Water depth (m)',fontsize=12)
 
+ax1.set_ylabel('Speed (m/s)',fontsize=10)
+ax1.legend(loc=1)
+ax2=ax1.twinx()
+ax2.plot(Depth,Angel,'ob-', label=r'\Phi')
+
+ax2.set_ylabel('Angle ( )',fontsize=10)
+
+
+
+# %%

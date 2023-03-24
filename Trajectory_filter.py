@@ -47,19 +47,19 @@ SaveParams=0
 FILTER=1
 DownSampleRate = 50   #输入的采样数据为1秒1000个点，这里设置每秒采样的点数
 # Showdata params
-MINTIME=0.5
-MAXTIME=2
-MINCHANNEL=8.5
-MAXCHANNEL=9.7 #Km
+MINTIME=0.5   #0.5  0
+MAXTIME=2   #2    3
+MINCHANNEL=8.5   #8.5   7.8  
+MAXCHANNEL=9.7 #Km  #9.7  10.5
 #波线方向（左下到右上：0 （图像域的上半部分，deg：0-90），左上到右下：1，deg：90-180，展示所有：2）
 WAVEDIRECT=1
 
 # Z-score and threshold filter
-threshold=1.3
+threshold=1.5
 #radon transfromation params
 Tstart =2
-Tend =3
-Cstart =8.2
+Tend =2.5
+Cstart =8.3
 Cend= 9
 CSTART=Cstart
 CEND=Cend
@@ -126,6 +126,14 @@ if MAXTIME==-1:
 else:
     ET1=ST+timedelta(minutes=MAXTIME)
 print(ST1,ET1)
+
+
+STW=ST+timedelta(minutes=Tstart)
+if Tend==-1:
+    ETW=ET
+else:
+    ETW=ST+timedelta(minutes=Tend)
+print(STW,ETW)
 
 
 #%%Read DAS data files
@@ -196,10 +204,10 @@ RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),
 
 
 
-
+#%%
 '''
 PlotDAS(ShowData,ST1,ET1,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels,PLOTANCHOR,PLOTREGION)  
-DASNR(ShowData)
+#DASNR(ShowData)
 
 
 #For Radon transformation, Slice partial data from ShowData-----------------------------
@@ -231,14 +239,14 @@ print('Estimated ship speed: ',speed)
 ShowDataSlice=ValidationSpeedOnRadon(speed,FILTER_Data,ReDownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Tstart,Tend,Cstart,Cend,threshold,WAVEDIRECT)
 
 K_env,bias=CalculateKEnv(ShowDataSlice,channel_spacing,ReDownSampleRate)
-Env_speed=K_env*channel_spacing*fs
+Env_speed=K_env*channel_spacing*DownSampleRate
 
-print('包络线速度',Env_speed)
+print('包络线速度',Env_speed,K_env)
 #To validate the K-line and K-envelope-line in the same figure
 
 #figures in the paper
-PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT,K_env,bias)
-PlotRadonInPaper(ShowDataSlice)
+PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT,K_env,bias,STW,ETW,CSTART)
+PlotRadonInPaper(ShowDataSlice,channel_spacing,STW,ETW,CSTART)
 '''
 
 WLen_Scale=25   #20

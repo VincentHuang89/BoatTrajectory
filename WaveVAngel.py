@@ -78,6 +78,10 @@ def WavePattern(a,n,k0=1,kmax=25,kdelta=0.01):
 
 
 def WavePattern1(a,n,k0=1,kmax=25,kdelta=0.01):
+    '''
+    return ship wake pattern and the alpha
+    
+    '''
     X=[]
     Y=[]
     Y1=[]
@@ -123,22 +127,29 @@ def move(X,Y,angle,dist):
     return X_m,Y_m
 
 def PlotBoatWave(v,h,angle,dist):
+    '''
+    Simulate the ship trajectory from top view
+    '''
     N=FroudeNum(v,h)
     A=5
-    plt.figure(dpi=300,figsize=(10,10))
+    plt.figure(dpi=500,figsize=(7,10))
     #plt.xlim(-8,8)
     #plt.ylim(-8,8)
     trajx=np.arange(-10,10,0.1)
-    if angle==90:
+    if angle==180:
         trajy=np.zeros(len(trajx))
     else:
-        trajy=tan(radians(angle))*trajx
+        trajy=tan(radians(angle-90))*trajx
     plt.plot(trajx,trajy,linestyle='--')
+    plt.vlines(x=0,ymin=-15,ymax=35,colors='black',linestyle='--')
+    plt.ylim([-15,35])
+    plt.xlim([-10,25])
+    plt.legend(["Sailing line","Optical fiber"],fontsize=15)
 
-    plt.vlines(x=0,ymin=-10,ymax=30,colors='black',linestyle='--')
-    plt.xlim([-20,20])
-    plt.ylim([-20,20])
-    plt.legend(["Sailing line","Optical fiber"])
+    frame = plt.gca()
+    frame.axes.get_yaxis().set_visible(False)
+    # x 轴不可见
+    frame.axes.get_xaxis().set_visible(False)
     for a in range(1,A+1):
         X,Y,Y1=WavePattern(a,N)
 
@@ -154,6 +165,8 @@ def PlotBoatWave(v,h,angle,dist):
         lines=plt.plot(RMX,RMY,lw=3)
         clr=lines[0].get_color()
         plt.plot(RMX1,RMY1,color=clr,lw=3)
+    plt.savefig('SimShipWake.png')
+    plt.savefig('Paperfig/SimShipWake.pdf',bbox_inches='tight')
 
 
 def PlotShipWakePattern(v,h,A,angle,dist):
@@ -262,13 +275,20 @@ def PlotWaveInDas(v,h,angle,T,A):
         plt.plot(x2,crossp2,lw=3)
     plt.savefig('WavePatternInDas.png')
 
-def PlotSimuWaveInDas(v,h,angle,T,A,WLen_Scale,Wbias):  
+def PlotSimuWaveInDas(v,h,angle,T,A,WLen_Scale,Wbias,UpperBound,LowerBound):  
+    '''
+    Transform the ship wake from the top view into the data in DAS domain
+    '''
 
-    UpperBound=20
-    LowerBound=-1000
     N=FroudeNum(v,h)
     delta_T=0.01
-    plt.figure(dpi=300,figsize=(10,10))
+    plt.figure(dpi=500,figsize=(10,10))
+    plt.xlabel('Time',fontsize=12)
+    plt.ylabel('Channel',fontsize=12)
+    frame = plt.gca()
+    frame.axes.get_yaxis().set_visible(False)
+    # x 轴不可见
+    frame.axes.get_xaxis().set_visible(False)
     for a in range(1,A+1):
         crossp1=[]
         crossp2=[]
@@ -276,7 +296,7 @@ def PlotSimuWaveInDas(v,h,angle,T,A,WLen_Scale,Wbias):
         t_start1=0
         for t in np.arange(0,T,delta_T):
             dist=v*t 
-            X,Y,Y1=WavePattern(a,N,0.2,1,0.01)
+            X,Y,Y1=WavePattern(a,N,0.8,1.5,0.05)
 
             RX,RY=ROTATE(angle,X,Y)
             RX1,RY1=ROTATE(angle,X,Y1)
@@ -322,9 +342,13 @@ def PlotSimuWaveInDas(v,h,angle,T,A,WLen_Scale,Wbias):
         x1=x1*DownSampleRate
         x2=x2*DownSampleRate
 
-        plt.plot(x1,crossp1,lw=3)
-        plt.plot(x2,crossp2,lw=3)
+        plt.plot(x1,crossp1,lw=1.5)
+        plt.plot(x2,crossp2,lw=1.5)
+
         #print(x1,crossp1)
     #plt.ylim([-30,30])
     #plt.xlim([0,6])
+
     plt.savefig('SimWakeInDas.png')
+    plt.savefig('Paperfig/SimWakeInDas.pdf',bbox_inches='tight')
+

@@ -18,32 +18,24 @@ from PIL import Image
 v=13.02
 h=7.298
 phy=120   #船
-phy=phy-90
-dist=15
+dist=10
 
 N=FroudeNum(v,h)
+#X,Y,Y1,alpha=WavePattern1(1,N)  
+#PlotShipWakePattern(v,h,5,phy,dist)
 
-X,Y,Y1,alpha=WavePattern1(1,N)
-PlotShipWakePattern(v,h,15,phy,dist)
-
-
-PlotBoatWave(v,h,phy,dist)
+PlotBoatWave(v,h,phy,dist)  #画出不同时刻船只经过光纤的过程
 
 #%%
-t=5
+WLen_Scale=1
+Wbias=0
+Tbias=0
+angle=phy
+t=10
 
-PlotSimuWaveInDas(v,h,phy,t,8,1,0)
-#%%
-WLen_Scale=35
-Wbias=73.5
-Tbias=1.2
-h=7.125
-angle=118.2
-
-v=13.262
-UpperBound=20
+UpperBound=40
 LowerBound=-1000
 
-PlotSimuWaveInDas(v,h,angle,t,12,WLen_Scale,Wbias)
+PlotSimuWaveInDas(v,h,angle,t,8,WLen_Scale,Wbias,UpperBound,LowerBound)
 # %%
 

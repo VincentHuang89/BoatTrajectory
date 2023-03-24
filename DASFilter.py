@@ -80,17 +80,17 @@ def WeightMatrix(K,size):
 
 def PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels,PLOTANCHOR,PLOTREGION):
 #plot figure for ShowData, and mark the passing ship according to the message from FiberBoatMessage. Besides, the data slice used for the next radon transfromation is also mark in this figure
-    fig1=plt.figure(dpi=400,figsize=(13,10))    
+    fig1=plt.figure(dpi=400,figsize=(10,6))    
     ax1 = fig1.add_subplot(1,1,1) 
     plt.imshow(np.transpose(ShowData), cmap="bwr", aspect='auto',origin='lower',vmin=-3,vmax=3) # cmap=''bwr,, 
     #计算坐标轴的刻度大小,合计10个时间戳(计算有问题，需要考虑数据的实际距离以及截断)
     #根据MINCHANNEL和MAXCHANNEL重置Y轴
     plt.colorbar()
-    TimeTicks=20
+    TimeTicks=3
     TI=(ET-ST)/TimeTicks
-    xlabel=np.linspace(0,ShowData.shape[0],TimeTicks+1)
-    plt.xticks(xlabel,pd.date_range(ST.strftime("%Y%m%d %H%M"),ET.strftime("%Y%m%d %H%M"),freq=TI).strftime('%H:%M:%S'),rotation = 60,size=15)
-    ylabel=np.linspace(0,ShowData.shape[1],10)
+    xlabel=np.linspace(0,ShowData.shape[0]-1,TimeTicks+1)
+    plt.xticks(xlabel,pd.date_range(ST.strftime("%Y%m%d %H%M%S"),ET.strftime("%Y%m%d %H%M%S"),periods=TimeTicks+1).strftime('%H:%M:%S'),rotation = 0,size=15)
+    ylabel=np.linspace(0,ShowData.shape[1],5)
     plt.xlabel("Time",fontsize=15)
     plt.yticks(ylabel,np.round((ylabel)*channel_spacing/1000+MINCHANNEL,2),size=15)
 
@@ -105,6 +105,8 @@ def PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,R
     if PLOTREGION==1:
         plt.plot(RegionSliceX,RegionSliceY,linewidth=2.5)
     plt.savefig("Space-time diagram.png",bbox_inches = 'tight')
+    plt.savefig("/home/huangwj/DAS/BoatTrajectory/Paperfig/Space-time diagram2.pdf",bbox_inches = 'tight')
+ 
     print("Space-time diagram.png")
 
 #def DASNR():
