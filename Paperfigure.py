@@ -121,23 +121,32 @@ def PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT
     Channel=np.array(Channel).reshape(-1,1)
 
     plt.figure(dpi=500,figsize=(10,6))
-    plt.plot(x,k*x+1.5*b,lw=2,color='lime',label='Calculated divergent wave crest')
+    plt.plot(x,k*x+1.5*b,lw=2.5,color='lime',linestyle='--',label='估算的波峰线')
+    #plt.plot(x,k*x+1.5*b,lw=2,color='lime',label='Calculated divergent wave crest')
+
     #plt.text(0,0,"U =%.2f m/s"%speed,size=15)
     plt.ylim((0,ShowDataSlice.shape[0]))
 
     plt.imshow(ShowDataSlice, aspect='auto',cmap="bwr",origin='lower',vmin=-3,vmax=3)
     plt.colorbar()
-    plt.plot(Time,Channel,lw=2,linestyle='--',color='b',label='Envelope Curve')
-    plt.plot(Time,list(bias+K_env*np.array(Time)),lw=2,color='gold',label='Linear regression of Envelope Curve')
+    plt.plot(Time,Channel,lw=2.5,linestyle='dotted',color='b',label='散波包络线')
+    #plt.plot(Time,Channel,lw=2,linestyle='--',color='b',label='Envelope Curve')  
+    #plt.plot(Time,list(bias+K_env*np.array(Time)),lw=2,color='gold',label='Linear regression of Envelope Curve')
+    plt.plot(Time,list(bias+K_env*np.array(Time)),lw=2.5,color='gold',label='散波包络线的线性拟合')
+
     TimeTicks=3
     xlabel=np.linspace(0,ShowDataSlice.shape[1]-1,TimeTicks+1)
     plt.xticks(xlabel,pd.date_range(STW.strftime("%Y%m%d %H%M%S"),ETW.strftime("%Y%m%d %H%M%S"),periods=TimeTicks+1).strftime('%H:%M:%S'),rotation = 0,size=15)
     ylabel=np.linspace(0,ShowDataSlice.shape[0],5)
-    plt.xlabel("Time",fontsize=15)
+    #plt.xlabel("Time",fontsize=15)
+    plt.xlabel("时间",fontsize=15)
+
     plt.yticks(ylabel,np.round((ylabel)*channel_spacing/1000+Cstart,2),size=15)
 
-    plt.ylabel("Distance(Km)",fontsize=15)
-    plt.legend()
+    #plt.ylabel("Distance(Km)",fontsize=15)
+    plt.ylabel("距离(公里)",fontsize=13)
+
+    plt.legend(fontsize=10)
     print('Envelope and wave crest!')
     plt.savefig('Envelope_Crest.png' ,bbox_inches='tight')
     plt.savefig('/home/huangwj/DAS/BoatTrajectory/Paperfig/Envelope_Crest.pdf',bbox_inches='tight')

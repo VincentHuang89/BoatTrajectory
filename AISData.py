@@ -6,6 +6,7 @@ import math
 import datetime
 from datetime import timedelta
 from math import sin,cos
+from tqdm import tqdm
 
 
 
@@ -149,6 +150,10 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
             dropindex.append(temp.index[i])
     df_time=df_time[~df_time['MMSI'].isin(dropindex)]
 
+    #删除船速为0的数据
+    df_time=df_time[df_time['航速(节)']!=0]
+    print('Data clean!')    
+
     
     crossFiberBoat=pd.DataFrame(columns=['MMSI','CrossTime','Time_0','Time_1','Time_0_1(min)','CrossSpeed','Speed_0_1','lat','lng','disFromEnd/Km','tra_direction','Angle'])
     #Time_0_1(min)反映过光纤前船只坐标时间的差异，用以筛选掉过光纤前    后时间差异特别大的数据，默认5分钟内的数据比较合适。
@@ -160,8 +165,8 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
     INDEX=df_time['MMSI'].value_counts().index
     FIBER_0=np.array([22.140,113.709])
     FIBER_1=np.array([22.168,113.801])
-    
-    for mmsi in INDEX:
+    print('计算过光纤船只的速度与方向')
+    for mmsi in tqdm(INDEX):
         df=df_time[df_time['MMSI']==mmsi]
         long=df['经度']
         lat=df['纬度']
@@ -176,15 +181,15 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
             Tra_0=np.array([lat[i],long[i]])
             Tra_1=np.array([lat[i+1],long[i+1]])
             if cross(FIBER_0,FIBER_1,Tra_0,Tra_1)==1:
-                [lati,lng],Tra_dirc=cross_point(FIBER_0,FIBER_1,    Tra_0,Tra_1)
+                [lati,lng],Tra_dirc=cross_point(FIBER_0,FIBER_1,Tra_0,Tra_1)
                 t=crosstime(Tra_0,Tra_1,[lati,lng],traTime[i], traTime[i+1],speed[i], speed[i+1])
                 s=crossSpeed(Tra_0,Tra_1,[lati,lng],speed[i], speed[i+1])
                 d=getDistance(FIBER_1[0], FIBER_1[1], lati, lng)
-                crossFiberBoat.loc[len(crossFiberBoat.index)] =     (mmsi,t,traTime[i],traTime[i+1],(traTime[i+1]-traTime[i]).seconds/60,s, speed[i+1]-speed[i],lati,lng,d,Tra_dirc,math.    degrees(GetCrossAngle(FIBER_0,FIBER_1,Tra_0,    Tra_1)))
+                crossFiberBoat.loc[len(crossFiberBoat.index)] =     (mmsi,t,traTime[i],traTime[i+1],(traTime[i+1]-traTime[i]).total_seconds()/60,s, speed[i+1]-speed[i],lati,lng,d,Tra_dirc,math.degrees(GetCrossAngle(FIBER_0,FIBER_1,Tra_0,Tra_1)))
                 
     crossFiberBoat['MMSI']=crossFiberBoat['MMSI'].astype('str')
-    #删除过光纤前后时间差异较大的点，暂定为10分钟
-    crossFiberBoat=crossFiberBoat[crossFiberBoat['Time_0_1(min)']<5]
+    #删除过光纤前后时间差异较大的点，暂定为6分钟
+    crossFiberBoat=crossFiberBoat[crossFiberBoat['Time_0_1(min)']<6]
     #将速度从节换算为m/s
     crossFiberBoat['CrossSpeed']=crossFiberBoat['CrossSpeed']*1000/3600*1.852
  
@@ -195,12 +200,30 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
     MMSI=list(crossFiberBoat["MMSI"])
     MMSI=list(set(MMSI))
     
-    FiberBoatMessage=pd.DataFrame(columns=['MMSI','CrossTime',  'Time_0','Time_1','CrossSpeed(m/s)','Delta_Speed','lat','lng','disFromEnd/Km', 'tra_direction','Angle','length','width','depth','type'])
-    
-    for mmsi in MMSI:
+    #FiberBoatMessage=pd.DataFrame(columns=['MMSI','CrossTime',  'Time_0','Time_1','CrossSpeed(m/s)','Delta_Speed','lat','lng','disFromEnd/Km', 'tra_direction','Angle','length','width','depth','type'])
+    print('关联船只信息')
+
+    FiberBoatMessage= pd.merge(crossFiberBoat, static, left_on='MMSI', right_on='MMSI',how='left')
+    '''
+
+
+
+    for mmsi in tqdm(MMSI):
+        mmsi_debug=pd.DataFrame(columns=["mmsi"])
+        mmsi_debug['mmsi']=np.array([str(mmsi)])
+        mmsi_debug.to_csv('mmsi_debug.csv')
         tmp1=crossFiberBoat[crossFiberBoat['MMSI']==mmsi]
         tmp2=static[static['MMSI']==mmsi]
+        if tmp2.empty:
+            tmp2=pd.DataFrame(columns=["船长（米）",'船宽（米）','吃水（米）','类型'],data=[[None,None,None,None]])
         tmp=np.array([tmp1['MMSI'],tmp1['CrossTime'],tmp1['Time_0'],tmp1['Time_1'],tmp1['CrossSpeed'],tmp1['Speed_0_1'],tmp1['lat'],tmp1['lng'],tmp1['disFromEnd/Km'],tmp1['tra_direction'],tmp1['Angle']])
+
+        mmsi_debug=pd.DataFrame(columns=["mmsi"])
+        mmsi_debug['mmsi']=np.array([str(mmsi)])
+        mmsi_debug['tmp_shape0']=np.array([tmp.shape[0]])
+        mmsi_debug['tmp_shape1']=np.array([tmp.shape[1]])
+        mmsi_debug.to_csv('mmsi_debug.csv')
+
         tmp=np.row_stack((tmp,tmp.shape[1]*list(tmp2["船长（米）"])))
         tmp=np.row_stack((tmp,tmp.shape[1]*list(tmp2['船宽（米）'])))
         tmp=np.row_stack((tmp,tmp.shape[1]*list(tmp2['吃水（米）'])))
@@ -209,7 +232,7 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
     
         FiberBoatMessage = pd.concat([FiberBoatMessage,df_temp], ignore_index=False)
     
-    
+    '''    
     FiberBoatMessage["CrossTime"]=pd.to_datetime(FiberBoatMessage["CrossTime"])
     FiberBoatMessage["Time_0"]=pd.to_datetime(FiberBoatMessage["Time_0"])
     FiberBoatMessage["Time_1"]=pd.to_datetime(FiberBoatMessage["Time_1"])

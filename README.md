@@ -57,3 +57,10 @@ Trajectory_filter :修改了PlotSimulInDAS函数中的时间标注参数，ST变
 Paperfigure.py: 重新调整了PlotSimInDAS.png的画图逻辑，Tbias和Wbias依据船行波出现的时刻和位置来自动生成，不需要手动调整，同时调整了Simulated Wake的生成逻辑，仅依靠Wbias来调整尺寸。
 
 Trajectory_filter：增加船行波出现时刻和位置的计算逻辑。
+
+
+20230611:
+
+AISData.py: 调整光纤部署的起止点。
+
+![1686482650537](image/README/1686482650537.png)

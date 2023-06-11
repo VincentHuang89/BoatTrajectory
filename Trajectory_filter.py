@@ -26,6 +26,7 @@ import math
 from math import sin,cos,tan,radians
 from sklearn import preprocessing
 import matplotlib.pyplot as plt
+import matplotlib
 import scipy.signal as signal
 from scipy.fftpack import fft,ifft
 from sklearn.decomposition import FastICA
@@ -40,6 +41,9 @@ from skimage.transform import radon
 from RadonWake import PlotRadon,SpeedOnRadon,SNROnRadon,ValidationSpeedOnRadon,EnhanceResolution,CalculateKEnv
 from Paperfigure import PlotK_KenvLine,PlotRadonInPaper,PlotSimulInDAS
 from scipy import stats
+print(matplotlib.matplotlib_fname())
+plt.rcParams['font.sans-serif']=['SimHei'] #用来正常显示中文标签
+plt.rcParams['axes.unicode_minus']=False #用来正常显示负号
 #%%Params ---------------------------------------
 #Save Params or not
 SaveParams=0
@@ -47,10 +51,10 @@ SaveParams=0
 FILTER=1
 DownSampleRate = 50   #输入的采样数据为1秒1000个点，这里设置每秒采样的点数
 # Showdata params
-MINTIME=0.5   #0.5  0
-MAXTIME=2   #2    3
-MINCHANNEL=8.5   #8.5   7.8  
-MAXCHANNEL=9.7 #Km  #9.7  10.5
+MINTIME=0   #0.5  0
+MAXTIME=3   #2    3
+MINCHANNEL=7.8   #8.5   7.8  
+MAXCHANNEL=10.5 #Km  #9.7  10.5
 #波线方向（左下到右上：0 （图像域的上半部分，deg：0-90），左上到右下：1，deg：90-180，展示所有：2）
 WAVEDIRECT=1
 
@@ -66,7 +70,7 @@ CEND=Cend
 Cstart=max(Cstart-MINCHANNEL,0)
 Cend=min(Cend-MINCHANNEL,MAXCHANNEL)
 #To anchor the ship or not in DAS figure with AIS data
-PLOTANCHOR=0
+PLOTANCHOR=1
 
 #To anchor the dataslice based on Tstart,Tend,Cstart,Cend
 PLOTREGION=1
@@ -210,7 +214,7 @@ RegionSliceY=[int(Cstart*1000/channel_spacing),int(Cstart*1000/channel_spacing),
 
 
 #%%
-'''
+
 PlotDAS(ShowData,ST1,ET1,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,RegionSliceX,RegionSliceY,channel_spacing,n_channels,PLOTANCHOR,PLOTREGION)  
 #DASNR(ShowData)
 
@@ -252,9 +256,9 @@ print('包络线速度',Env_speed,K_env)
 #figures in the paper
 PlotK_KenvLine(ShowDataSlice,speed,DownSampleRate,channel_spacing,WAVEDIRECT,K_env,bias,STW,ETW,CSTART)
 PlotRadonInPaper(ShowDataSlice,channel_spacing,STW,ETW,CSTART)
-'''
 
-WLen_Scale=40   #20
+
+WLen_Scale=15   #20
 Wbias=OCCURDIST-MINCHANNEL
 Tbias=(OCCURTIME-ST1)/timedelta(seconds=1)
 h=7.246
