@@ -9,75 +9,62 @@ from tqdm import tqdm
 from WaveVAngel import FroudeNum,FRandAngel
 from math import acos,degrees
 import matplotlib.pyplot as plt
-from math import asin,degrees,sqrt,tanh,sinh,cos
+from math import asin,degrees,sqrt,tanh,sinh,cos,sin, radians
 from scipy import interpolate
 from numpy import NaN
 #输入船只两侧散波在DAS图上的斜率，单位为m/s。
-ship=0#选择不同的船只
+ship=3  #选择不同的船只
 #Ais数据
 #对应的MMSI
-MMSI=['413260090','413208430','413471740']
-V=[13.86,13.82,12.83]
-Angle=[119.86,58.22,123.26]
+MMSI=['413260090','413208430','413471740','413231470','413260090']
+'''V=[13.86,13.82,12.83,16.15]
+Angle=[119.86,58.22,123.26,90.01]'''
+
+V=[13.89,13.85,12.86,16.15,14.33]
+Angle=[136.58,47.1,133.07,90.05,49]
+
 print(V[ship],Angle[ship])
 
-
-K1=[8.40,28.9,8.42] #14.61
-#K1=[8.02,28.9,8.42] #14.61
-
+K1=[8.40,28.9,8.42,10.21,22.5] #8.40,
 #更靠近通道4000
-K2=[19.2,8.4,20.15]
-#K2=[28,8.4,20.15]
+K2=[19.7,8.4,20.15,12.1,9.3]  #11.25
 
+
+K1=[8.40,28.9,8.42,9.76,22.5] #8.40,
+#更靠近通道4000
+K2=[19.7,8.4,20.15,11.57,8.6]  #11.25
+
+
+K_CUSP=[4.6,4.5,3.67,3.3,4.36]#3.48
+k_cusp=K_CUSP[ship]
+
+
+k1 = K1[ship]  # 请根据实际情况设置K1[ship]的值
+k2 = K2[ship]  # 请根据实际情况设置K2[ship]的值
+
+res = pd.DataFrame(columns=['fai', 'alpha', 'speed'])  # speed 指代散波的前进速度
+
+alpha = np.arange(20, 60, 0.1)
+
+K = (k1-k2)/(k1+k2)
+fai = np.degrees(np.arctan(np.tan(np.radians(alpha))/K))
+fai = (fai + 180) % 180
+speed = k2 * np.sin(np.radians(fai + alpha))
 #%%
-
-k1=K1[ship]
-k2=K2[ship]
-
-
-
-def f1(fai,alpha,k1,k2):
-    err=k1*sin(radians(fai-alpha))-k2*sin(radians(180-fai-alpha))
-    '''
-    if sin(radians(180-fai-alpha))==0:
-        err=1
-    else:
-        err=(k1*sin(radians(fai-alpha))/(k2*sin(radians(180-fai-alpha)))-1)
-    '''
-    return err
-
-res=pd.DataFrame(columns=['fai','alpha','err1','speed']) #speed 指代散波的前进速度
-
-for fai in tqdm(np.arange(1,180,0.5)):
-    for a in np.arange(1,60,0.5):
-        if k1==0:
-            #if a<=90:
-            res.loc[len(res.index)] = (fai,a,abs(a-fai),k2*sin(radians(fai+a)))
-        elif k2==0:
-            #if a>90:
-            res.loc[len(res.index)] = (fai,a,abs(180-(a+fai)),k1*sin(radians(2*a)))                
-        else:
-            res.loc[len(res.index)] = (fai,a,(f1(fai,a,k1,k2)),k1*sin(radians(fai-a)))
-
-g=9.8
+res = pd.DataFrame({'fai': fai.flatten(), 'alpha': alpha.flatten(), 'speed': speed.flatten()})
 
 #%%按照水深H与船速来筛选可能的航速和航向，考虑FR大于1
-
+g=9.8
 res['Height']=res['speed']**2/g
-res1=res[((res['err1'])>-0.02)& ((res['err1'])<=0.02) & (res['Height']>=7)&(res['Height']<9)]
-
-
-
-
+res1=res[(res['Height']>=7)&(res['Height']<10)]
 #%%考虑kelvin wedge 包络线所对应的夹角
 
-
+#%%
 
 fai=list(res1['fai'])
 alpha=list(res1['alpha'])
 
-K_CUSP=[4.6,4.5,3.67]
-k_cusp=K_CUSP[ship]
+
 if ship==1:
     fai=list(180-np.array(fai))
 
@@ -109,15 +96,15 @@ for i in range(0,len(alpha)):
 
 ShipSpeed_r=[]
 for i in range(0,len(fai)):
-    ShipSpeed_r.append(k_cusp*sin(radians(fai[i]-r_list[i]))/sin(radians(r_list[i])))
+    ShipSpeed_r.append(k_cusp*sin(radians(fai[i]-r_list[i]))/sin(radians(r_list[i])))   #考虑K=1.5时候，包络线在上半部分还是下半部分？
 
-res1['ShipSpeed_env']=ShipSpeed_r #利用包络线计算船速
+res1.loc[:,'ShipSpeed_env']=ShipSpeed_r #利用包络线计算船速
 #res1['ShipSpeed(Kn)']=res1['ShipSpeed_r']/0.51444
 
-res1['R']=r_list
-res1['Fr1']=res1['ShipSpeed_env']/res1['speed'] #求解FR
-res1['Fr0']=FR_list   #根据alpha-r曲线寻找Fr
-res1['ShipSpeed']=res1['speed']*res1['Fr0'] #利用Fr计算船速
+res1.loc[:,'R']=r_list
+res1.loc[:,'Fr1']=res1['ShipSpeed_env']/res1['speed'] #求解FR
+res1.loc[:,'Fr0']=FR_list   #根据alpha-r曲线寻找Fr
+res1.loc[:,'ShipSpeed']=res1['speed']*res1['Fr0'] #利用Fr计算船速
 if ship==1:
     k=k2
 else:
@@ -129,9 +116,12 @@ V_error=[]
 for i in range(0,len(fai)):
     V_error.append(1-k_cusp/k/(Fr1[i]*sin(radians(fai[i]))*sin(radians(fai[i]-alpha[i]))/sin(fai[i]-r_list[i])))
 
-res1['V_error']=V_error
+res1.loc[:,'V_error']=V_error
 res1=res1[(res1['ShipSpeed_env']<20)]
 
+print(min(list(res1['fai'])),max(list(res1['fai'])))
+print(min(list(res1['ShipSpeed_env'])),max(list(res1['ShipSpeed_env'])))
+print(min(list(res1['ShipSpeed'])),max(list(res1['ShipSpeed'])))
 
 res1.to_excel('船只轨迹计算结果'+'.xlsx')
 #%%
@@ -142,16 +132,15 @@ Depth=list(res1['Height'])
 
 fig=plt.figure(dpi=500,figsize=(10,8))
 ax1=fig.add_subplot(111)
-ax1.plot(Depth,Speed,'ro-',label='ship speed')
+ax1.plot(Depth,Speed,'r-',label='ship speed')
 ax1.set_xlabel('Water depth (m)',fontsize=12)
 
 ax1.set_ylabel('Speed (m/s)',fontsize=10)
-ax1.legend(loc=1)
+
 ax2=ax1.twinx()
-ax2.plot(Depth,Angel,'ob-', label=r'\Phi')
-
+ax2.plot(Depth,Angel,'b-', label=r'\Phi')
 ax2.set_ylabel('Angle ( )',fontsize=10)
-
+plt.savefig('Paperfig/ss.pdf',bbox_inches='tight')
 
 
 # %%

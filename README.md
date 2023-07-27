@@ -58,9 +58,20 @@ Paperfigure.py: 重新调整了PlotSimInDAS.png的画图逻辑，Tbias和Wbias�
 
 Trajectory_filter：增加船行波出现时刻和位置的计算逻辑。
 
-
 20230611:
 
-AISData.py: 调整光纤部署的起止点。
+AISData.py: 调整光纤部署的起止点，利用百度地图的坐标拾取工具：http://api.map.baidu.com/lbsapi/getpoint/index.html
+
+海图工具：https://www.bilibili.com/video/BV1cT4y1M7kx/?spm_id_from=333.337.search-card.all.click&vd_source=04b165bfde4d781288f5d8beaa41b6ed
+
+![1686489781325](image/README/1686489781325.png)
 
 ![1686482650537](image/README/1686482650537.png)
+
+230713: 在AISData.py中，修改getcrossangle函数，将经纬度坐标转成直角坐标系，再利用向量夹角的方式求解船舶路径与光纤的夹角。
+
+230715：在ReVise_Fiber_pos.py中，包含从FTP下载数据的功能、船行波图片的生成以及根据AIS数据进行标注。
+
+230715：在Select_ship.py中，用于根据具体船速，方向等约束条件筛选船只记录，接着进入ReVise_Fiber_pos.py生成相应的图片以及时间标注，用于辅助光纤重定位。
+
+230720：在Trajectory_filter等代码中，修改船只尖峰的定位功能以及数据切片的功能，不再通过t_s等参数，而是预置的数据区域顶点偏置等方式来实现数据切片，从而保存每条船只的数据切片参数。

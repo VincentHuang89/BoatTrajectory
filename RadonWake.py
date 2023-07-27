@@ -59,7 +59,7 @@ def PlotRadon(ShowDataSlice,DENOISE_RADON):
     
     if DENOISE_RADON==1:
         sinogram=(sinogram-np.mean(sinogram))/np.std(sinogram,ddof=1)
-        STD=3.5*np.std(sinogram,ddof=1)
+        STD=3*np.std(sinogram,ddof=1)
         sinogram=((sinogram>STD)|(sinogram<-STD))*sinogram
 
     dx, dy = 0.5 * 180.0 / max(ShowDataSlice.shape), 0.5 / sinogram.shape[0]
@@ -73,7 +73,7 @@ def PlotRadon(ShowDataSlice,DENOISE_RADON):
     plt.savefig('Radon_transform.png')
     return sinogram
 
-def SpeedOnRadon(sinogram,resolution,channel_spacing,fs,scaling,WAVEDIRECT):
+def SpeedOnRadon(sinogram,resolution,channel_spacing,fs,scaling,Lateral_Wave):
 #求解最大的斜率
     
     #求解最大的斜率，平均每行的最大值索引
@@ -82,12 +82,12 @@ def SpeedOnRadon(sinogram,resolution,channel_spacing,fs,scaling,WAVEDIRECT):
     sino=[]
     for i in range(0,sinogram.shape[0]):
         sino.append(np.max(sinogram[i,:]))
-        if WAVEDIRECT==0:  #考虑45-90
+        if Lateral_Wave=="K2":  #考虑45-90
             deg_y=np.argmax(sinogram[i,0:int(sinogram.shape[1]/2)])%sinogram.shape[1]/resolution*180
             deg_y=(int(sinogram.shape[1]/4)+np.argmax(sinogram[i,int(sinogram.shape[1]/4):int(sinogram.shape[1]/2)]))%sinogram.shape[1]/resolution*180
             #print(deg_y)
 
-        elif WAVEDIRECT==1: #考虑135-180
+        elif Lateral_Wave=='K1': #考虑135-180
             deg_y=(int(sinogram.shape[1]/2)+np.argmax(sinogram[i,int(sinogram.shape[1]/2):-1]))%sinogram.shape[1]/resolution*180
         else:
             deg_y=np.argmax(sinogram[i,:])%sinogram.shape[1]/resolution*180
@@ -116,7 +116,7 @@ def SNROnRadon(sinogram):
     return SNR
 
 
-def ValidationSpeedOnRadon(speed,FILTER_Data,DownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Tstart,Tend,Cstart,Cend,threshold,WAVEDIRECT):
+def ValidationSpeedOnRadon(speed,FILTER_Data,DownSampleRate,channel_spacing,MINTIME,MAXTIME,MINCHANNEL,MAXCHANNEL,Region_all_pos,threshold,WAVEDIRECT):
     DataCoordX, DataCoordy = FILTER_Data.shape
 
     TDownSample = slice(0, DataCoordX, int(1000 / DownSampleRate))
@@ -137,10 +137,10 @@ def ValidationSpeedOnRadon(speed,FILTER_Data,DownSampleRate,channel_spacing,MINT
     #Prepare data for radon transformation
 
     
-    TimeWin = slice(int(Tstart*60*DownSampleRate), max(-1,int(Tend*60*DownSampleRate)), 1)
-    Cwin = slice(int(Cstart*1000/channel_spacing),max(-1,int(Cend*1000/channel_spacing)),1)
-    ShowDataSlice=(ShowData[TimeWin,Cwin])
 
+    TimeWin = slice(Region_all_pos[0][0],Region_all_pos[1][0],1)
+    Cwin = slice(Region_all_pos[3][1],Region_all_pos[0][1],1)
+    ShowDataSlice=(ShowData[TimeWin,Cwin])
     ShowDataSlice=np.transpose((ShowDataSlice))
 
     plt.figure(dpi=300)

@@ -5,24 +5,34 @@ import pandas as pd
 import math
 import datetime
 from datetime import timedelta
-from math import sin,cos
+from math import sin,cos,radians,acos,sqrt,degrees,atan2
 from tqdm import tqdm
+from shapely.geometry import LineString
 
 
+EARTH_REDIUS = 6378.137
 
-def direct(V1:np.array,V2:np.array):
-    if (V1[0]*V2[1]-V1[1]*V2[0])<0:
-        sign=-1
+def cross(A,B,C,D):
+    track1=[A,B]
+    track2=[C,D]
+    line1 = LineString(track1)
+    line2 = LineString(track2)
+    
+    if line1.intersects(line2):
+        return True
     else:
-        sign=1
-    return sign
-def cross(A,B,C,D):  #判断线段AB 与CD是否相交
-    cross=0  #不相交
-    if direct(C-A,D-A)*direct(C-B,D-B)<0:
-        if direct(A-C,B-C)*direct(A-D,B-D)<0:
-            cross=1
-    return cross
-def cross_point(A,B,C,D):   ##  计算两直线的交点
+        return False
+
+
+def cross_point(A,B,C,D):
+    track1=[A,B]
+    track2=[C,D]
+    line1 = LineString(track1)    #经纬度坐标系
+    line2 = LineString(track2)
+    
+    intersection = line1.intersection(line2)
+
+        #判断CD在地图上的朝向
     x1=A[0]
     y1=A[1]
     x2=B[0]
@@ -31,20 +41,6 @@ def cross_point(A,B,C,D):   ##  计算两直线的交点
     y3=C[1]
     x4=D[0]
     y4=D[1]
-    k1=(y2-y1)*1.0/(x2-x1)#计算k1,由于点均为整数，需要进行浮点数转化
-    b1=y1*1.0-x1*k1*1.0#整型转浮点型是关键
-    if (x4-x3)==0:#L2直线斜率不存在操作
-        k2=None
-        b2=0
-    else:
-        k2=(y4-y3)*1.0/(x4-x3)#斜率存在操作
-        b2=y3*1.0-x3*k2*1.0
-    if k2==None:
-        x=x3
-    else:
-        x=(b2-b1)*1.0/(k1-k2)
-    y=k1*x*1.0+b1*1.0
-    #判断CD在地图上的朝向
     LATD=['N','S']
     LNGD=['E','W']
     if (x4-x3)>0:
@@ -58,29 +54,70 @@ def cross_point(A,B,C,D):   ##  计算两直线的交点
         direc_lng=[0,1]
 
     Tra_dirc=LNGD[direc_lng[0]]+LATD[direc_lat[0]]+'->'+LNGD[direc_lng[1]]+LATD[direc_lat[1]]
+    
+    if intersection.geom_type == 'Point':
+        return [intersection.x, intersection.y],Tra_dirc
+    elif intersection.geom_type == 'MultiPoint':
+        # 如果有多个交点，可以选择其中一个或根据需求处理
+        return [intersection[0].x, intersection[0].y],Tra_dirc
+    else:
+        return None
 
-    return [x,y],Tra_dirc
 
-def GetCrossAngle(A,B,C,D):
-    x1=A[0]
-    y1=A[1]
-    x2=B[0]
-    y2=B[1]
-    x3=C[0]
-    y3=C[1]
-    x4=D[0]
-    y4=D[1]
-    arr_0 = np.array([(x2 - x1), (y2 - y1)])
-    arr_1 = np.array([(x4 - x3), (y4 - y3)])
-    cos_value = (float(arr_0.dot(arr_1)) / (np.sqrt(arr_0.dot(arr_0)) * np.sqrt(arr_1.dot(arr_1))))
-    if cos_value>1:
-        cos_value=1
-    elif cos_value<-1:
-        cos_value=-1
+
+def convert_to_cartesian(latitude, longitude, radius):
+    """
+    将经纬度坐标转换为直角坐标系（笛卡尔坐标系）
+    
+    参数：
+    latitude: 纬度，单位为度数
+    longitude: 经度，单位为度数
+    radius: 地球半径
+    
+    返回值：
+    包含 x、y、z 直角坐标的 numpy 数组
+    """
+    lat_rad = np.radians(latitude)
+    lon_rad = np.radians(longitude)
+    
+    x = radius * np.cos(lat_rad) * np.cos(lon_rad)
+    y = radius * np.cos(lat_rad) * np.sin(lon_rad)
+    z = radius * np.sin(lat_rad)
+    
+    return np.array([x, y, z])
+
+def GetCrossAngle(A, B, C, D, radius=EARTH_REDIUS):
+    """
+    计算经纬度表示的两个线段之间的夹角
+    
+    参数：
+    A, B, C, D: 包含经纬度信息的四个点坐标
+    radius: 地球半径，单位为千米，默认值为6371千米
+    
+    返回值：
+    两个线段之间的夹角，单位为弧度
+    
+    """
+    # 将经纬度转换为直角坐标系
+    point_A = convert_to_cartesian(A[0], A[1], radius)
+    point_B = convert_to_cartesian(B[0], B[1], radius)
+    point_C = convert_to_cartesian(C[0], C[1], radius)
+    point_D = convert_to_cartesian(D[0], D[1], radius)
+    
+    # 计算两个向量之间的夹角
+    vector_AB = point_B - point_A
+    vector_CD = point_D - point_C
+    
+    cos_value = np.dot(vector_AB, vector_CD) / (np.linalg.norm(vector_AB) * np.linalg.norm(vector_CD))
+    if cos_value > 1:
+        cos_value = 1
+    elif cos_value < -1:
+        cos_value = -1
+    
     return np.arccos(cos_value)
 
 
-EARTH_REDIUS = 6378.137
+
 def rad(d):
     return d * math.pi / 180.0
 
@@ -96,10 +133,8 @@ def getDistance(lat1, lng1, lat2, lng2):
 def crosstime(tra_0,tra_1,cp,time_0,time_1,speed_0,speed_1):
     l=getDistance(cp[0],cp[1],tra_0[0],tra_0[1])
     L=getDistance(tra_1[0],tra_1[1],tra_0[0],tra_0[1])
-    '''
-    deltaT=(time_1-time_0)*l/L
-    t=time_0+deltaT
-    '''
+
+
     T=2*L/(speed_0+speed_1) #总耗时
     a=(speed_1-speed_0)/T #加速度
     v=math.sqrt(2*a*l+speed_0*speed_0)
@@ -107,6 +142,17 @@ def crosstime(tra_0,tra_1,cp,time_0,time_1,speed_0,speed_1):
         deltaT=(time_1-time_0)*l/L
     else:
         deltaT=(time_1-time_0)*((v-speed_0)/a)/T
+
+    """
+    if pd.isna(deltaT):
+        print(deltaT)
+        print(time_1,time_0,speed_0,speed_1,l,L,T,a,v,deltaT)"""
+    
+    if np.isnan(a):   #当加速度值为nan时候，将船只移动过程认为是匀速运动 
+        deltaT=(time_1-time_0)*l/L
+
+    seconds = int(deltaT.total_seconds())
+    deltaT = timedelta(seconds=seconds)
     t=time_0+deltaT
 
     return t
@@ -131,12 +177,6 @@ def crossSpeed(tra_0,tra_1,cp,speed_0,speed_1):
 def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetime.datetime):
     df = pd.read_csv(PosFile) #UTC+8
     static=pd.read_csv(StaticFile)
-
-
-    ST_UTC0=ST_UTC8-timedelta(hours=8)
-    ET_UTC0=ET_UTC8-timedelta(hours=8)
-
-
     df['MMSI'].value_counts()
     df['时间']=pd.to_datetime(df['时间'])
     df_time=pd.DataFrame(df[(df['时间']>ST_UTC8) &  (df['时间']<ET_UTC8)])
@@ -163,8 +203,13 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
     #遍历每一行
     df_time['MMSI'] = df_time['MMSI'].astype(str)
     INDEX=df_time['MMSI'].value_counts().index
-    FIBER_0=np.array([22.140,113.709])
-    FIBER_1=np.array([22.168,113.801])
+
+    #FIBER_0=np.array([22.140,113.709])
+
+    FIBER_0=(22.166389,113.736713)  #纬度（latitude）  经度  （longtitude） （调整后光纤位置）
+    FIBER_1=(22.16997,113.806996) #桂山岛方向
+
+
     print('计算过光纤船只的速度与方向')
     for mmsi in tqdm(INDEX):
         df=df_time[df_time['MMSI']==mmsi]
@@ -185,7 +230,7 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
                 t=crosstime(Tra_0,Tra_1,[lati,lng],traTime[i], traTime[i+1],speed[i], speed[i+1])
                 s=crossSpeed(Tra_0,Tra_1,[lati,lng],speed[i], speed[i+1])
                 d=getDistance(FIBER_1[0], FIBER_1[1], lati, lng)
-                crossFiberBoat.loc[len(crossFiberBoat.index)] =     (mmsi,t,traTime[i],traTime[i+1],(traTime[i+1]-traTime[i]).total_seconds()/60,s, speed[i+1]-speed[i],lati,lng,d,Tra_dirc,math.degrees(GetCrossAngle(FIBER_0,FIBER_1,Tra_0,Tra_1)))
+                crossFiberBoat.loc[len(crossFiberBoat.index)] = (mmsi,t,traTime[i],traTime[i+1],(traTime[i+1]-traTime[i]).total_seconds()/60,s, speed[i+1]-speed[i],lati,lng,d,Tra_dirc,math.degrees(GetCrossAngle(FIBER_0,FIBER_1,Tra_0,Tra_1)))
                 
     crossFiberBoat['MMSI']=crossFiberBoat['MMSI'].astype('str')
     #删除过光纤前后时间差异较大的点，暂定为6分钟
@@ -204,35 +249,6 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
     print('关联船只信息')
 
     FiberBoatMessage= pd.merge(crossFiberBoat, static, left_on='MMSI', right_on='MMSI',how='left')
-    '''
-
-
-
-    for mmsi in tqdm(MMSI):
-        mmsi_debug=pd.DataFrame(columns=["mmsi"])
-        mmsi_debug['mmsi']=np.array([str(mmsi)])
-        mmsi_debug.to_csv('mmsi_debug.csv')
-        tmp1=crossFiberBoat[crossFiberBoat['MMSI']==mmsi]
-        tmp2=static[static['MMSI']==mmsi]
-        if tmp2.empty:
-            tmp2=pd.DataFrame(columns=["船长（米）",'船宽（米）','吃水（米）','类型'],data=[[None,None,None,None]])
-        tmp=np.array([tmp1['MMSI'],tmp1['CrossTime'],tmp1['Time_0'],tmp1['Time_1'],tmp1['CrossSpeed'],tmp1['Speed_0_1'],tmp1['lat'],tmp1['lng'],tmp1['disFromEnd/Km'],tmp1['tra_direction'],tmp1['Angle']])
-
-        mmsi_debug=pd.DataFrame(columns=["mmsi"])
-        mmsi_debug['mmsi']=np.array([str(mmsi)])
-        mmsi_debug['tmp_shape0']=np.array([tmp.shape[0]])
-        mmsi_debug['tmp_shape1']=np.array([tmp.shape[1]])
-        mmsi_debug.to_csv('mmsi_debug.csv')
-
-        tmp=np.row_stack((tmp,tmp.shape[1]*list(tmp2["船长（米）"])))
-        tmp=np.row_stack((tmp,tmp.shape[1]*list(tmp2['船宽（米）'])))
-        tmp=np.row_stack((tmp,tmp.shape[1]*list(tmp2['吃水（米）'])))
-        tmp=np.row_stack((tmp,tmp.shape[1]*list(tmp2['类型'])))
-        df_temp=pd.DataFrame(np.transpose(tmp),columns=['MMSI', 'CrossTime',  'Time_0','Time_1','CrossSpeed(m/s)','Delta_Speed','lat','lng','disFromEnd/Km','tra_direction','Angle','length','width','depth',  'type']) #'CrossTime':datetime.datetime
-    
-        FiberBoatMessage = pd.concat([FiberBoatMessage,df_temp], ignore_index=False)
-    
-    '''    
     FiberBoatMessage["CrossTime"]=pd.to_datetime(FiberBoatMessage["CrossTime"])
     FiberBoatMessage["Time_0"]=pd.to_datetime(FiberBoatMessage["Time_0"])
     FiberBoatMessage["Time_1"]=pd.to_datetime(FiberBoatMessage["Time_1"])
@@ -327,3 +343,36 @@ def ShipTraj(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:dateti
     df_time=pd.DataFrame(df[(df['时间']>ST_UTC8) &  (df['时间']<ET_UTC8)])
     return df_time[df_time['MMSI']==MMSI]
 
+
+import glob
+import re
+from datetime import datetime
+def Index_AIS_csv_by_DAS_Data(input_date:str):
+    file_pattern = '/home/huangwj/DAS/BoatTrajectory/AIS_SHIP_DATA/FiberBoatMessage*.csv'
+    # 获取匹配文件路径列表
+    file_list = glob.glob(file_pattern)
+    matched_files=[]
+    # 正则表达式模式用于从文件名中提取日期
+    date_pattern = r'FiberBoatMessage_(\d{6})_(\d{6})\.csv'
+    for file_path in file_list:
+        # 提取文件名中的日期信息
+        match = re.search(date_pattern, file_path)
+        if match:
+            file_start_date = datetime.strptime(match.group(1), '%y%m%d')
+            file_end_date = datetime.strptime(match.group(2), '%y%m%d')
+             # 提取日期信息，添加到列表中
+            if file_start_date <= input_date <= file_end_date:
+                matched_files.append(file_path)
+    return matched_files
+
+
+if __name__=='__main__':
+    print(Index_AIS_csv_by_DAS_Data(datetime.strptime('06/09/21 11:54', "%d/%m/%y %H:%M")))
+
+
+    FIBER_0=(22.162744,113.726)  #纬度（latitude）  经度  （longtitude） （调整后光纤位置）
+    FIBER_1=(22.167073,113.801)
+    Tra_0 = ()
+    Tra_1 = ()
+
+    GetCrossAngle(FIBER_0,FIBER_1,Tra_0,Tra_1)
