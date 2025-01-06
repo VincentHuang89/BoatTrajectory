@@ -11,9 +11,7 @@ from math import sin,cos
 import folium
 import os
 os.chdir('/home/huangwj/DAS/BoatTrajectory/')
-
-
-flag=2
+flag=1
 if flag ==1:
 #2022 7月15到8月15 AIS数据
     print("处理2022 7月15到8月15 AIS数据")
@@ -59,7 +57,6 @@ else:
 
 
 
-
 df=pd.read_csv(StaticFile)
 dfp=pd.read_csv(PosFile)
 print(f'statis:{len(df)}',f'pos:{len(dfp)}')
@@ -69,8 +66,10 @@ print(dfp.columns)
 ST_UTC0=ST_UTC8-timedelta(hours=8)
 ET_UTC0=ET_UTC8-timedelta(hours=8)
 
-FiberBoatMessage=AISData(PosFile,StaticFile,ST_UTC8,ET_UTC8)
+FiberBoatMessage=AISData(dfp,df,ST_UTC8,ET_UTC8)
 FiberBoatMessage.sort_values(by='CrossTime',ascending=True,inplace=True,ignore_index=True)
+#修改FiberBoatMessage的列名
+FiberBoatMessage.rename(columns = {'船名' : 'ShipName', '船旗' : 'Flag','船长（米）':'length','船宽（米）':'width','吃水（米）':'depth','类型':'type','更新时间':'UpdateTime'}, inplace = True)
 FiberBoatMessage.to_csv(filename)
 print(f'Write {filename}')
 

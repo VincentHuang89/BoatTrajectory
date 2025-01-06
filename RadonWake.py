@@ -181,19 +181,28 @@ def EnhanceResolution(ShowDataSlice,DownSampleRate,SPACE_EN,TIME_EN):
     Result=ShowDataSlice
     return Result,ReDownSampleRate,channel_spacing_scaling
 
-def CalculateKEnv(ShowDataSlice,channel_spacing,fs):
+def CalculateKEnv(ShowDataSlice,channel_spacing,fs,Lateral_Wave='K1'):
     '''
     Calculate the Sloop K of the divergent wave envelope curve
     '''
     #找出每个时刻出现振动的最大channel
     Time=[]
     Channel=[]
-    for i in range(0,ShowDataSlice.shape[1]):
-        Time.append(i)
-        for j in range(ShowDataSlice.shape[0]-1,0,-1):
-            if ShowDataSlice[j,i]!=0:
-                Channel.append(j)
-                break
+    if Lateral_Wave == 'K1':
+        for i in range(0,ShowDataSlice.shape[1]):
+            Time.append(i)
+            for j in range(ShowDataSlice.shape[0]-1,0,-1):
+                if ShowDataSlice[j,i]!=0:
+                    Channel.append(j)
+                    break
+    else:
+        for i in range(0,ShowDataSlice.shape[1]):
+            Time.append(i)
+            for j in range(0,ShowDataSlice.shape[0]-1,1):
+                if ShowDataSlice[j,i]!=0:
+                    Channel.append(j)
+                    break
+
     Time=np.array(Time).reshape(-1,1)
     Channel=np.array(Channel).reshape(-1,1)
 

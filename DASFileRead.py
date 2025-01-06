@@ -10,6 +10,7 @@ def DasFileRead(StartTime:datetime,EndTime:datetime,Filepath:str):
     #遍历所有从StartTime到EndTime所对应的文件
     while T<=EndTime:  
         filename=T.strftime("%Y%m%d_%H%M")
+        print(filename)
         files = os.listdir(Filepath)
         for s in files:
             if filename in s:

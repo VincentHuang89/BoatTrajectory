@@ -174,15 +174,15 @@ def crossSpeed(tra_0,tra_1,cp,speed_0,speed_1):
 
 
 
-def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetime.datetime):
-    df = pd.read_csv(PosFile) #UTC+8
-    static=pd.read_csv(StaticFile)
+def AISData(PosDf:pd.DataFrame,StaticDF:pd.DataFrame,ST_UTC8:datetime.datetime,ET_UTC8:datetime.datetime,FIBER_0=(22.161561, 113.712681), FIBER_1=(22.167286, 113.795594)):
+    #FIBER_0和FIBER_1默认为三角岛和桂山岛之间光缆起止点的经纬度
+    df = PosDf #UTC+8
+    static=StaticDF
     df['MMSI'].value_counts()
     df['时间']=pd.to_datetime(df['时间'])
     df_time=pd.DataFrame(df[(df['时间']>ST_UTC8) &  (df['时间']<ET_UTC8)])
     INDEX=df_time['MMSI'].value_counts().index
     temp=df_time['MMSI'].value_counts()
-
     #删除只有一个数据的轨迹
     dropindex=[]
     for i in range(0,len(temp)):
@@ -193,23 +193,17 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
     #删除船速为0的数据
     df_time=df_time[df_time['航速(节)']!=0]
     print('Data clean!')    
-
-    
     crossFiberBoat=pd.DataFrame(columns=['MMSI','CrossTime','Time_0','Time_1','Time_0_1(min)','CrossSpeed','Speed_0_1','lat','lng','disFromEnd/Km','tra_direction','Angle'])
     #Time_0_1(min)反映过光纤前船只坐标时间的差异，用以筛选掉过光纤前    后时间差异特别大的数据，默认5分钟内的数据比较合适。
     #Speed_0_1反映船只的速度变化，用来判断船只的状态是否不正常
     
-    
     #遍历每一行
     df_time['MMSI'] = df_time['MMSI'].astype(str)
     INDEX=df_time['MMSI'].value_counts().index
+    # FIBER_0=(22.161561, 113.712681)  #纬度（latitude）  经度  （longtitude） （调整后光纤位置）
+    # FIBER_1=(22.167286, 113.795594) #桂山岛方向 
 
-    #FIBER_0=np.array([22.140,113.709])
-
-    FIBER_0=(22.166389,113.736713)  #纬度（latitude）  经度  （longtitude） （调整后光纤位置）
-    FIBER_1=(22.16997,113.806996) #桂山岛方向
-
-
+    '''如果仅考虑直线段光纤，应该分析fiber_0到Max_distance通道间的das数据，约八公里长度的光纤数据'''
     print('计算过光纤船只的速度与方向')
     for mmsi in tqdm(INDEX):
         df=df_time[df_time['MMSI']==mmsi]
@@ -238,7 +232,7 @@ def AISData(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetim
     #将速度从节换算为m/s
     crossFiberBoat['CrossSpeed']=crossFiberBoat['CrossSpeed']*1000/3600*1.852
  
-    crossFiberBoat.sort_values(by='CrossTime').to_excel ("crossFiberBoat.xlsx")
+    #crossFiberBoat.sort_values(by='CrossTime').to_excel ("crossFiberBoat.xlsx")
   
     #关联船的信息
     static['MMSI']=static['MMSI'].astype('str')
@@ -278,25 +272,39 @@ def FilterBoat(FiberBoatMessage:pd.DataFrame,DT:datetime.datetime,Angle:list,Dis
     Boat_speed=Boat_speed[Boat_speed['CrossSpeed(m/s)']<Speed[1]]
     return Boat_speed,[len(Boat_TimeLimit),len(Boat_angel),len(Boat_dis),len(Boat_speed)]
 
-def AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing,ST,ET,TT):
-    
+def cal_channel_by(depth, zero_offset, channel_spacing):
+    # 根据depth反推最接近的channel
+    n_channels_ceil = np.ceil((depth - zero_offset) / channel_spacing) + 1
+    n_channels_floor = np.floor((depth - zero_offset) / channel_spacing) + 1
+    if (depth <= zero_offset + (n_channels_ceil - 1) * channel_spacing):
+        return int(n_channels_ceil)
+    else:
+        return int(n_channels_floor)
+'''
+def AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing,zero_offset,ST,ET,TT):
     CT=list(FiberBoatMessage['CrossTime'])
     deltaCT=[]
     for i in range(0,len(CT)):
-        deltaCT.append(round((CT[i]-ST)/(ET-ST)*TT))
-
+        deltaCT.append(round((CT[i]-ST).total_seconds()/(ET-ST).total_seconds()*TT))
     vline_indx = deltaCT
-
+    Fiber_1 = 13.07 #Km 桂山岛起点，用于确定cross_pos
     #利用AIS数据在DAS数据上标定船只通过的时间以及位置
-    Dist=list(FiberBoatMessage['disFromEnd/Km'])
+    #Dist=list(FiberBoatMessage['disFromEnd/Km'])
+    Dist = list(Fiber_1 - np.array(FiberBoatMessage['disFromEnd/Km']))  #根据光线重定位项目
+
     #区域距离标定(3.33和120都是经验参数)
     #RegionDistUpper=list(n_channels-(Dist+3.33)*1000/channel_spacing+120)
     #RegionDistUpper=[round(n_channels-(i-MINCHANNEL+3.33)*1000/channel_spacing+200) for i in Dist]
     #RegionDistdown=[round(n_channels-(i-MINCHANNEL+3.33)*1000/channel_spacing-200) for i in Dist]
-    ChannelOffSet=round(3.33*1000/channel_spacing)
-    DISTFROMEND=[n_channels-round(i*1000/channel_spacing)-ChannelOffSet for i in Dist]
-    MINCHANNEL=round(MINCHANNEL*1000/channel_spacing)
-    MAXCHANNEL=round(MAXCHANNEL*1000/channel_spacing)
+    #ChannelOffSet=round(3.33*1000/channel_spacing)
+    #DISTFROMEND=[n_channels-round(i*1000/channel_spacing)-ChannelOffSet for i in Dist]
+
+    DISTFROMEND = []
+    for dist in Dist:
+        DISTFROMEND.append(cal_channel_by(dist*1000, zero_offset, channel_spacing))
+    MINCHANNEL = cal_channel_by(MINCHANNEL*1000, zero_offset, channel_spacing)
+    MAXCHANNEL = cal_channel_by(MAXCHANNEL*1000, zero_offset, channel_spacing)
+
     RegionDistUpper=[]
     RegionDistdown=[]
     RegionArea=200 #channel
@@ -308,7 +316,7 @@ def AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing
             ShipIndex.append(DISTFROMEND.index(dist))
     RegionDistUpper=list(np.array(RegionDistUpper)-MINCHANNEL)   
     RegionDistdown=list(np.array(RegionDistdown)-MINCHANNEL)   
-    print(RegionDistUpper,RegionDistdown)
+    
 
     deltaCTUpper=[i+round(TT*0.05) for i in vline_indx]
     deltaCTdown=[i-round(TT*0.05) for i in vline_indx]
@@ -329,9 +337,46 @@ def AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing
     for i in ShipIndex:
         deltaCTUpper.append(deltaCT[i])
     
-    print(deltaCTdown,deltaCTUpper)
-
     return deltaCTUpper,deltaCTdown,RegionDistUpper,RegionDistdown
+'''
+def cal_time(t0,t1,ST,ET):
+    T0 = t0
+    T1 = t1
+    if t0<ST:
+        T0 = ST
+    if t1>ET:
+        T1 = ET
+    return T0,T1
+
+
+
+def AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing,zero_offset,ST,ET,Time_dimension,Dist_dimension):
+    deltaCTUpper = []
+    deltaCTdown = []
+    RegionDistUpper = []
+    RegionDistdown = []
+    MMSI = []
+    TotalSeconds = (ET-ST).total_seconds()
+    minchannel = cal_channel_by(MINCHANNEL*1000, zero_offset, channel_spacing)
+    maxchannel = cal_channel_by(MAXCHANNEL*1000, zero_offset, channel_spacing)
+    RegionArea=200 #channel
+    for row_index in range(0,len(FiberBoatMessage)):
+        row = FiberBoatMessage.iloc[row_index,:]
+        Fiber_1 = 13.07 #Km 桂山岛起点，用于确定cross_pos
+        #利用时间和位置约束来筛选船舶数据
+        if (row['CrossTime']>=ST) and (row['CrossTime']<=ET):
+            Dist = Fiber_1 - row['disFromEnd/Km'] #根据光线重定位项目
+            if (Dist>= MINCHANNEL) and (Dist<= MAXCHANNEL):
+                t0,t1 = cal_time(row['Time_0'],row['Time_1'],ST,ET)
+                deltaCTdown.append(round((t0-ST).total_seconds()/TotalSeconds*Time_dimension))
+                deltaCTUpper.append(round((t1-ST).total_seconds()/TotalSeconds*Time_dimension))
+                dist = cal_channel_by(Dist*1000, zero_offset, channel_spacing)
+                RegionDistUpper.append(min(dist+RegionArea,maxchannel)-minchannel)
+                RegionDistdown.append(max(dist-RegionArea,minchannel)-minchannel)
+                RegionDistUpper.append(round((min(dist+RegionArea,maxchannel)-minchannel)/(maxchannel-minchannel)*Dist_dimension))
+                RegionDistdown.append(round((max(dist-RegionArea,minchannel)-minchannel)/(maxchannel-minchannel)*Dist_dimension))
+                MMSI.append(row['MMSI'])
+    return deltaCTUpper,deltaCTdown,RegionDistUpper,RegionDistdown,MMSI
 
 def ShipTraj(PosFile:str,StaticFile:str,ST_UTC8:datetime.datetime,ET_UTC8:datetime.datetime,MMSI):#船只轨迹数据读取
     df = pd.read_csv(PosFile) #UTC+8
@@ -367,12 +412,50 @@ def Index_AIS_csv_by_DAS_Data(input_date:str):
 
 
 if __name__=='__main__':
-    print(Index_AIS_csv_by_DAS_Data(datetime.strptime('06/09/21 11:54', "%d/%m/%y %H:%M")))
+    # from DASFileRead import DasFileRead
+
+    # SHIP=0
+    # MMSI=['413260090','413208430','413471740','413226010','413231470','413260090']
+    # DataPath='/home/huangwj/DAS/BoatTrajectory/DataforAIS'
+    # StartTime=["24/07/22 09:54","24/07/22 10:01","24/07/22 21:09",'10/09/21 13:17','06/09/21 11:56','09/09/21 9:33']
+    # EndTime=["24/07/22 10:00","24/07/22 10:03","24/07/22 21:11",'10/09/21 13:22','06/09/21 11:58','09/09/21 9:37']
+
+    # MINTIME = [0.5,0,0,0,0,0]   #0.5  0
+    # MAXTIME = [-1,-1,-1,-1,2.5,-1]   #2    3
+    # MINCHANNEL=[7.8,10,10,11,10,9]   #8.5   7.8  
+    # MAXCHANNEL=[10.5,13,13,13.5,12.5,10.5] #Km  #9.7  10.5
+    # MINTIME=MINTIME[SHIP]
+    # MAXTIME=MAXTIME[SHIP]
+    # MINCHANNEL=MINCHANNEL[SHIP]
+    # MAXCHANNEL=MAXCHANNEL[SHIP]
+
+    # ST_UTC8=datetime.strptime(StartTime[SHIP], "%d/%m/%y %H:%M")
+    # ET_UTC8=datetime.strptime(EndTime[SHIP], "%d/%m/%y %H:%M")
+    # ST_UTC0=ST_UTC8-timedelta(hours=8)
+    # ET_UTC0=ET_UTC8-timedelta(hours=8)
+    # FileSet,times=DasFileRead(ST_UTC0,ET_UTC0,DataPath)
+
+    # ST=times[0]
+    # ET=times[-1]+timedelta(minutes=1)
+    # ST=ST+timedelta(hours=8)
+    # ET=ET+timedelta(hours=8)
 
 
-    FIBER_0=(22.162744,113.726)  #纬度（latitude）  经度  （longtitude） （调整后光纤位置）
-    FIBER_1=(22.167073,113.801)
-    Tra_0 = ()
-    Tra_1 = ()
+    # AIS_file_list = Index_AIS_csv_by_DAS_Data(datetime.strptime(StartTime[SHIP], "%d/%m/%y %H:%M"))
+    # print(AIS_file_list)
+    # FiberBoatMessage = pd.read_csv(AIS_file_list[0])
+    # FiberBoatMessage['CrossTime'] = pd.to_datetime(FiberBoatMessage['CrossTime'],format="%Y-%m-%d %H:%M:%S")
+    # FiberBoatMessage['Time_1'] = pd.to_datetime(FiberBoatMessage['Time_1'],format="%Y-%m-%d %H:%M:%S")
+    # FiberBoatMessage['Time_0'] = pd.to_datetime(FiberBoatMessage['Time_0'],format="%Y-%m-%d %H:%M:%S")
 
-    GetCrossAngle(FIBER_0,FIBER_1,Tra_0,Tra_1)
+    # n_channels = 4096
+    # channel_spacing = 4.0838
+    # zero_offset = 1.1048660452254646
+    # deltaCTUpper,deltaCTdown,RegionDistUpper,RegionDistdown,MMSI = AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing,zero_offset,ST,ET,1500,600)
+    # print(deltaCTUpper)
+    # print(RegionDistdown,RegionDistUpper)
+    # print(MMSI)
+    
+    FIBER_0 = (24.454861,118.041744)
+    FIBER_1 = (24.447322,118.053203)
+    #print(getDistance(FIBER_0[0],FIBER_0[1],FIBER_1[0],FIBER_1[1]))

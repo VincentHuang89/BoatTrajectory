@@ -35,7 +35,8 @@ from DASFileRead import DasFileRead
 from tdms_reader_1 import *
 from AISData import AISData,AnchorShip
 from scipy import interpolate
-
+import pywt
+from math import sqrt,log
 def bandpass_f(some_data,sample_rate,cutoff_f_low,cutoff_f_high,cutoff_order):
     #带通滤波
     data=[]
@@ -54,6 +55,22 @@ def bandpass_f(some_data,sample_rate,cutoff_f_low,cutoff_f_high,cutoff_order):
         if (some_data.shape[1]-channel)%100==0:
             print('The rest channels for filtering:{}'.format(some_data.shape[1]-channel))
     return np.array(data).transpose()
+
+
+def DWT(Signal,wavelet,level):
+    coeffs = pywt.wavedec(Signal, wavelet, level=level)
+    thresh  = np.median(np.abs(Signal))/0.6745*sqrt(2*log(len(Signal)))
+    coeffs[1:] = (pywt.threshold(i, value=thresh, mode='soft') for i in coeffs[1:])
+    return pywt.waverec(coeffs, wavelet)
+
+def DWT_all_channels(some_data,wavelet,level):
+    data=[]
+    for channel in range(0,some_data.shape[1]):
+        data.append(DWT(some_data[:,channel],wavelet,level))
+        if (some_data.shape[1]-channel)%100==0:
+            print('The rest channels for filtering:{}'.format(some_data.shape[1]-channel))
+    return np.array(data).transpose()
+
 
 def DataDiff(Data,order):
     
@@ -79,7 +96,7 @@ def WeightMatrix(K,size):
     return Weight_matrix,Cdim,Tdim
 
 
-def PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,REGION,channel_spacing,n_channels,PLOTANCHOR,PLOTREGION):
+def PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,REGION,channel_spacing,n_channels,zero_offset,PLOTANCHOR,PLOTREGION,SHIP):
 #plot figure for ShowData, and mark the passing ship according to the message from FiberBoatMessage. Besides, the data slice used for the next radon transfromation is also mark in this figure
     ShipWave_top_pos = REGION['Wave_peak']
     fig1=plt.figure(dpi=400,figsize=(15,6))    
@@ -104,8 +121,8 @@ def PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,REGION,channel
     #船只过光纤轨迹标定
     
     if PLOTANCHOR==1:
-        deltaCTUpper,deltaCTdown,RegionDistUpper,RegionDistdown=AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing,ST,ET,ShowData.shape[0])
-        print(RegionDistUpper,RegionDistdown)
+        deltaCTUpper,deltaCTdown,RegionDistUpper,RegionDistdown,_=AnchorShip(FiberBoatMessage,MINCHANNEL,MAXCHANNEL,n_channels,channel_spacing,zero_offset,ST,ET,ShowData.shape[0],ShowData.shape[1])
+        
         for i in range(0,len(deltaCTdown)):
             plt.plot([deltaCTdown[i],deltaCTUpper[i],deltaCTUpper[i],deltaCTdown[i],deltaCTdown[i]],[RegionDistdown[i],RegionDistdown[i],   RegionDistUpper[i],RegionDistUpper[i],RegionDistdown[i]],linewidth=1)
     
@@ -125,8 +142,8 @@ def PlotDAS(ShowData,ST,ET,FiberBoatMessage,MINCHANNEL,MAXCHANNEL,REGION,channel
         RegionSliceY = [Region_all_pos[0][1],Region_all_pos[1][1],Region_all_pos[2][1],Region_all_pos[3][1],Region_all_pos[0][1]]        
         plt.plot(RegionSliceX,RegionSliceY,linewidth=2.5)
 
-    plt.savefig("Space-time diagram.svg",bbox_inches = 'tight')
-    plt.savefig("/home/huangwj/DAS/BoatTrajectory/Paperfig/Space-time diagram2.pdf",bbox_inches = 'tight')
+    plt.savefig(f"Space-time diagram_{SHIP}.svg",bbox_inches = 'tight')
+    plt.savefig(f"/home/huangwj/DAS/BoatTrajectory/Paperfig/Space-time diagram_{SHIP}.pdf",bbox_inches = 'tight')
  
     print("Space-time diagram.png")
 
@@ -206,3 +223,31 @@ def Cal_region_all_pos(ShipWave_top_pos,Bias_region_pos,Len_region_pos):
     left_down_point = (ShipWave_top_pos[0]+Bias_region_pos[0],ShipWave_top_pos[1]+Bias_region_pos[1]-Len_region_pos[1])
     right_down_point = (ShipWave_top_pos[0]+Bias_region_pos[0]+Len_region_pos[0],ShipWave_top_pos[1]+Bias_region_pos[1]-Len_region_pos[1])
     return [left_up_point,right_up_point,right_down_point,left_down_point]
+
+
+
+
+
+def Params_ShowData_slice(Ship_relocate,ST,MinChannel,Bias,Len_region,DownSampleRate,channel_spacing):
+    Ship_relocate_time = datetime.datetime.strptime(Ship_relocate[0],"%d/%m/%y %H:%M:%S")-ST
+    Ship_relocate_space = Ship_relocate[1]-MinChannel
+    ShipWave_top_pos = Pos_AnchorRegion(Ship_relocate_time,Ship_relocate_space,DownSampleRate,channel_spacing)
+    Bias_region_pos = (Cal_pos_t(Bias[0]*timedelta(minutes=1),DownSampleRate), Cal_pos_s(Bias[1],channel_spacing))
+    Len_region_pos = (Cal_pos_t(Len_region[0]*timedelta(minutes=1),DownSampleRate),Cal_pos_s(Len_region[1],channel_spacing))
+    Region_all_pos = Cal_region_all_pos(ShipWave_top_pos,Bias_region_pos,Len_region_pos)
+    return Region_all_pos,ShipWave_top_pos
+
+def Params_ShowData_3slice(Ship_relocate,ST,MinChannel,Bias,Len_region,DownSampleRate,channel_spacing,SHIP):
+    Bias_K1 = Bias['k1'][SHIP]
+    Len_region_K1 = Len_region['k1'][SHIP]
+    Ship_relocate = Ship_relocate[SHIP]
+    Region_all_pos_K1,ShipWave_top_pos = Params_ShowData_slice(Ship_relocate,ST,MinChannel,Bias_K1,Len_region_K1,DownSampleRate,channel_spacing)
+    Bias_K2 = Bias['k2'][SHIP]
+    Len_region_K2 = Len_region['k2'][SHIP]
+    Region_all_pos_K2,_ = Params_ShowData_slice(Ship_relocate,ST,MinChannel,Bias_K2,Len_region_K2,DownSampleRate,channel_spacing)
+    Bias_Ke = Bias['ke'][SHIP]
+    Len_region_Ke = Len_region['ke'][SHIP]
+    Region_all_pos_Ke,_ = Params_ShowData_slice(Ship_relocate,ST,MinChannel,Bias_Ke,Len_region_Ke,DownSampleRate,channel_spacing)
+    #打包船行波切片数据的设置
+    REGION = {'Wave_peak': ShipWave_top_pos,'K1':Region_all_pos_K1,'K2':Region_all_pos_K2,'Ke':Region_all_pos_Ke} 
+    return REGION
